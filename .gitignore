@@ -12,15 +12,15 @@ env/
 *.swp
 *.swo
 
-# Logs
-logs/
-*.log
+# Logs - include logs for team collaboration
+# *.log  # Commented out - team needs to see logs
 npm-debug.log*
 
-# Environment
+# Environment - ignore .env but NOT .env.example
 .env
 .env.local
 .env.*.local
+!.env.example
 
 # Build outputs
 dist/
