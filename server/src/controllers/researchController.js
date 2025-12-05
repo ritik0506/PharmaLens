@@ -82,12 +82,24 @@ const processResearch = async (req, res) => {
       requestId 
     });
 
-    // Execute multi-agent analysis
+    // Execute multi-agent analysis with all 10 agents (7 mandatory + 3 strategic)
     const analysisResults = await aiEngineService.analyzeCompound({
       molecule,
       mode,
       requestId,
-      agents: ['clinical', 'patent', 'market', 'vision']
+      agents: [
+        // 7 Mandatory Agents (EY Specification)
+        'clinical',       // Clinical Trials Agent
+        'patent',         // Patent Landscape Agent
+        'iqvia',          // IQVIA Insights Agent (market data)
+        'exim',           // EXIM Trends Agent
+        'internal',       // Internal Knowledge Agent
+        'web_intel',      // Web Intelligence Agent
+        // 3 Strategic Agents (High Value)
+        'regulatory',     // Regulatory & Compliance Agent
+        'patient_sentiment', // Patient Sentiment Agent
+        'esg'             // ESG & Sustainability Agent
+      ]
     });
 
     // Calculate request duration

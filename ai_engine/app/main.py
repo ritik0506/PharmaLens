@@ -47,19 +47,18 @@ structlog.configure(
 
 logger = structlog.get_logger(__name__)
 
-# Import agents
-from app.agents.market_agent import MarketAgent
+# Import agents - 7 Mandatory + 3 Strategic
 from app.agents.clinical_agent import ClinicalAgent
 from app.agents.patent_agent import PatentAgent
-from app.agents.vision_agent import VisionAgent
-from app.agents.validation_agent import ValidationAgent
-from app.agents.kol_finder_agent import KOLFinderAgent
-from app.agents.pathfinder_agent import MolecularPathfinderAgent
 from app.agents.iqvia_agent import IQVIAInsightsAgent
 from app.agents.exim_agent import EXIMAgent
 from app.agents.web_intelligence_agent import WebIntelligenceAgent
 from app.agents.internal_knowledge_agent import InternalKnowledgeAgent
 from app.agents.orchestrator import MasterOrchestrator
+# Strategic Agents (High Value - EY Focus)
+from app.agents.regulatory_agent import RegulatoryComplianceAgent
+from app.agents.patient_sentiment_agent import PatientSentimentAgent
+from app.agents.esg_agent import ESGSustainabilityAgent
 from app.core.config import settings
 from app.core.privacy_toggle import PrivacyManager
 
@@ -74,7 +73,7 @@ class AnalyzeRequest(BaseModel):
     mode: str = Field(default="cloud", pattern="^(secure|cloud)$", description="Processing mode")
     request_id: str = Field(..., description="Unique request identifier")
     agents: Optional[List[str]] = Field(
-        default=["clinical", "patent", "market", "vision"],
+        default=["clinical", "patent", "iqvia", "exim", "web_intel", "internal"],
         description="List of agents to engage"
     )
 
@@ -158,28 +157,24 @@ async def lifespan(app: FastAPI):
                 cloud=settings.CLOUD_ENABLED, 
                 local=settings.LOCAL_ENABLED)
     
-    # Initialize core agents
-    app.state.market_agent = MarketAgent()
-    app.state.clinical_agent = ClinicalAgent()
-    app.state.patent_agent = PatentAgent()
-    app.state.vision_agent = VisionAgent()
+    # Initialize 7 mandatory agents (per EY specification)
+    app.state.clinical_agent = ClinicalAgent()       # Clinical Trials Agent
+    app.state.patent_agent = PatentAgent()           # Patent Landscape Agent
+    app.state.iqvia_agent = IQVIAInsightsAgent()     # IQVIA Insights Agent
+    app.state.exim_agent = EXIMAgent()               # EXIM Trends Agent
+    app.state.web_intel_agent = WebIntelligenceAgent()  # Web Intelligence Agent
+    app.state.internal_knowledge_agent = InternalKnowledgeAgent()  # Internal Knowledge Agent
     app.state.privacy_manager = PrivacyManager()
     
-    # Initialize new agents
-    app.state.validation_agent = ValidationAgent()
-    app.state.kol_finder = KOLFinderAgent()
-    app.state.pathfinder = MolecularPathfinderAgent()
+    # Initialize 3 Strategic Agents (High Value - EY Focus)
+    app.state.regulatory_agent = RegulatoryComplianceAgent()  # FDA/EMA Compliance
+    app.state.patient_sentiment_agent = PatientSentimentAgent()  # Unmet Needs
+    app.state.esg_agent = ESGSustainabilityAgent()  # ESG & Green Sourcing
     
-    # Initialize mandatory domain expert agents
-    app.state.exim_agent = EXIMAgent()
-    app.state.iqvia_agent = IQVIAInsightsAgent()
-    app.state.web_intel_agent = WebIntelligenceAgent()
-    app.state.internal_knowledge_agent = InternalKnowledgeAgent()
-    
-    # Initialize orchestrator (creates its own agent instances)
+    # Initialize Master Orchestrator (orchestrates all agents + Report Generator)
     app.state.orchestrator = MasterOrchestrator()
     
-    logger.info("✅ All agents initialized successfully (12 agents total)")
+    logger.info("✅ All agents initialized successfully (7 mandatory + 3 strategic + Orchestrator)")
     
     yield
     
@@ -325,27 +320,95 @@ async def analyze_compound(request: AnalyzeRequest):
                 "duration_ms": patent_result.get("processing_time_ms", 0)
             })
         
-        if "market" in request.agents:
-            market_result = await app.state.market_agent.calculate_roi(
-                request.molecule
-            )
-            results["market"] = market_result
-            results["agents_executed"].append({
-                "name": "MarketAgent",
-                "status": "completed", 
-                "duration_ms": market_result.get("processing_time_ms", 0)
-            })
-        
-        if "vision" in request.agents:
-            vision_result = await app.state.vision_agent.analyze(
+        # IQVIA agent handles market analysis
+        if "market" in request.agents or "iqvia" in request.agents:
+            iqvia_result = await app.state.iqvia_agent.analyze(
                 request.molecule,
                 llm_config
             )
-            results["vision"] = vision_result
+            results["iqvia"] = iqvia_result
+            results["market"] = iqvia_result  # Alias for backward compatibility
             results["agents_executed"].append({
-                "name": "VisionAgent",
+                "name": "IQVIAInsightsAgent",
+                "status": "completed", 
+                "duration_ms": iqvia_result.get("processing_time_ms", 0)
+            })
+        
+        # Web Intelligence replaces vision agent
+        if "vision" in request.agents or "web_intel" in request.agents:
+            web_intel_result = await app.state.web_intel_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["web_intel"] = web_intel_result
+            results["vision"] = web_intel_result  # Alias for backward compatibility
+            results["agents_executed"].append({
+                "name": "WebIntelligenceAgent",
                 "status": "completed",
-                "duration_ms": vision_result.get("processing_time_ms", 0)
+                "duration_ms": web_intel_result.get("processing_time_ms", 0)
+            })
+        
+        # EXIM Trends Agent
+        if "exim" in request.agents:
+            exim_result = await app.state.exim_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["exim"] = exim_result
+            results["agents_executed"].append({
+                "name": "EXIMAgent",
+                "status": "completed",
+                "duration_ms": exim_result.get("processing_time_ms", 0)
+            })
+        
+        # Internal Knowledge Agent
+        if "internal" in request.agents:
+            internal_result = await app.state.internal_knowledge_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["internal"] = internal_result
+            results["agents_executed"].append({
+                "name": "InternalKnowledgeAgent",
+                "status": "completed",
+                "duration_ms": internal_result.get("processing_time_ms", 0)
+            })
+        
+        # Strategic Agents
+        if "regulatory" in request.agents:
+            regulatory_result = await app.state.regulatory_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["regulatory"] = regulatory_result
+            results["agents_executed"].append({
+                "name": "RegulatoryComplianceAgent",
+                "status": "completed",
+                "duration_ms": regulatory_result.get("processing_time_ms", 0)
+            })
+        
+        if "patient_sentiment" in request.agents:
+            sentiment_result = await app.state.patient_sentiment_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["patient_sentiment"] = sentiment_result
+            results["agents_executed"].append({
+                "name": "PatientSentimentAgent",
+                "status": "completed",
+                "duration_ms": sentiment_result.get("processing_time_ms", 0)
+            })
+        
+        if "esg" in request.agents:
+            esg_result = await app.state.esg_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["esg"] = esg_result
+            results["agents_executed"].append({
+                "name": "ESGSustainabilityAgent",
+                "status": "completed",
+                "duration_ms": esg_result.get("processing_time_ms", 0)
             })
         
         # Add knowledge graph summary
@@ -381,6 +444,7 @@ async def get_roi_calculation(request: ROIRequest):
     Dedicated ROI calculation endpoint.
     
     Returns detailed financial projections for drug repurposing.
+    Uses IQVIA agent for market intelligence.
     """
     logger.info(
         "roi_calculation_requested",
@@ -389,8 +453,10 @@ async def get_roi_calculation(request: ROIRequest):
     )
     
     try:
-        market_agent: MarketAgent = app.state.market_agent
-        result = await market_agent.calculate_roi(request.molecule)
+        iqvia_agent: IQVIAInsightsAgent = app.state.iqvia_agent
+        privacy_manager: PrivacyManager = app.state.privacy_manager
+        llm_config = privacy_manager.get_llm_config("cloud")
+        result = await iqvia_agent.analyze(request.molecule, llm_config)
         
         return {
             "success": True,
@@ -413,21 +479,27 @@ async def get_roi_calculation(request: ROIRequest):
 @app.get("/api/agents/status")
 async def get_agents_status():
     """
-    Get status of all available agents.
+    Get status of all available agents (7 mandatory + 3 strategic).
     """
     return {
         "agents": [
-            {"name": "ClinicalAgent", "status": "active", "version": "1.0.0"},
-            {"name": "PatentAgent", "status": "active", "version": "1.0.0"},
-            {"name": "MarketAgent", "status": "active", "version": "1.0.0"},
-            {"name": "VisionAgent", "status": "active", "version": "1.0.0"},
-            {"name": "ValidationAgent", "status": "active", "version": "1.0.0"},
-            {"name": "KOLFinderAgent", "status": "active", "version": "1.0.0"},
-            {"name": "MolecularPathfinderAgent", "status": "active", "version": "1.0.0"},
-            {"name": "MasterOrchestrator", "status": "active", "version": "1.0.0"}
+            # Core Orchestrator
+            {"name": "MasterOrchestrator", "status": "active", "version": "2.1.0", "category": "core"},
+            # 6 Mandatory Worker Agents
+            {"name": "IQVIAInsightsAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            {"name": "EXIMAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            {"name": "PatentAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            {"name": "ClinicalAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            {"name": "InternalKnowledgeAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            {"name": "WebIntelligenceAgent", "status": "active", "version": "1.0.0", "category": "mandatory"},
+            # 3 Strategic Agents
+            {"name": "RegulatoryComplianceAgent", "status": "active", "version": "1.0.0", "category": "strategic"},
+            {"name": "PatientSentimentAgent", "status": "active", "version": "1.0.0", "category": "strategic"},
+            {"name": "ESGSustainabilityAgent", "status": "active", "version": "1.0.0", "category": "strategic"},
         ],
         "orchestrator": "active",
-        "knowledge_graph": "connected"
+        "knowledge_graph": "connected",
+        "total_agents": 10
     }
 
 

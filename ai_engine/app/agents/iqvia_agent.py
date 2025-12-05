@@ -296,10 +296,13 @@ class IQVIAInsightsAgent:
         
         for i, company in enumerate(selected):
             if i < 4:
-                share = random.randint(max(5, remaining // 3), min(35, remaining - 10))
+                # Ensure valid range for randint
+                min_share = max(5, remaining // 5)
+                max_share = max(min_share + 1, min(35, remaining - 10))
+                share = random.randint(min_share, max_share) if min_share < max_share else min_share
                 remaining -= share
             else:
-                share = remaining
+                share = max(1, remaining)  # Ensure positive share
             
             shares.append({
                 "rank": i + 1,

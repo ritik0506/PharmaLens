@@ -3,11 +3,11 @@ PharmaLens Master Orchestrator Agent
 =====================================
 Coordinates all worker agents and manages the analysis pipeline.
 
-Responsibilities:
-- Decomposes complex user queries into sub-tasks
+Responsibilities (per EY specification):
+- Orchestrates the conversation
+- Decomposes queries into sub-tasks
 - Routes tasks to appropriate worker agents
-- Aggregates JSON outputs into cohesive summary
-- Manages parallel and sequential agent execution
+- Synthesizes the final response
 """
 
 import asyncio
@@ -17,15 +17,14 @@ import structlog
 
 from .clinical_agent import ClinicalAgent
 from .patent_agent import PatentAgent
-from .market_agent import MarketAgent
 from .iqvia_agent import IQVIAInsightsAgent
 from .exim_agent import EXIMAgent
-from .vision_agent import VisionAgent
-from .validation_agent import ValidationAgent
-from .kol_finder_agent import KOLFinderAgent
-from .pathfinder_agent import MolecularPathfinderAgent
 from .web_intelligence_agent import WebIntelligenceAgent
 from .internal_knowledge_agent import InternalKnowledgeAgent
+# Strategic Agents
+from .regulatory_agent import RegulatoryComplianceAgent
+from .patient_sentiment_agent import PatientSentimentAgent
+from .esg_agent import ESGSustainabilityAgent
 
 logger = structlog.get_logger(__name__)
 
@@ -34,31 +33,39 @@ class MasterOrchestrator:
     """
     Master Orchestrator Agent - The brain of the multi-agent system.
     
-    This agent:
-    1. Parses and understands user queries
-    2. Determines which agents to engage
-    3. Manages agent execution (parallel/sequential)
-    4. Aggregates and validates results
-    5. Generates final comprehensive report
+    7 Mandatory Agents (per EY specification):
+    1. Master Orchestrator - Orchestrates conversation and synthesizes responses
+    2. IQVIA Insights Agent - Market size, CAGR trends, therapy-level competition
+    3. EXIM Trends Agent - Export-import data, trade volumes, sourcing insights
+    4. Patent Landscape Agent - USPTO patents, expiry timelines, FTO flags
+    5. Clinical Trials Agent - Trial pipeline, sponsor profiles, phase distributions
+    6. Internal Knowledge Agent - Summarizes uploaded internal PDFs
+    7. Web Intelligence Agent - Real-time web search for guidelines and news
+    
+    3 Strategic Agents (High Value - EY Focus):
+    - Regulatory & Compliance Agent - FDA/EMA compliance, black-box warnings
+    - Patient Sentiment Agent - Unmet medical needs identification
+    - ESG & Sustainability Agent - Green sourcing, carbon footprint scoring
+    
+    Plus Report Generator Agent for PDF/Excel output formatting
     """
     
     def __init__(self):
         self.name = "MasterOrchestrator"
-        self.version = "1.0.0"
+        self.version = "2.1.0"
         
-        # Initialize all worker agents
+        # Initialize 6 mandatory worker agents (7th is the Orchestrator itself)
         self.agents = {
-            "clinical": ClinicalAgent(),
-            "patent": PatentAgent(),
-            "market": MarketAgent(),
             "iqvia": IQVIAInsightsAgent(),
             "exim": EXIMAgent(),
-            "vision": VisionAgent(),
-            "validation": ValidationAgent(),
-            "kol": KOLFinderAgent(),
-            "pathfinder": MolecularPathfinderAgent(),
-            "web_intelligence": WebIntelligenceAgent(),
-            "internal_knowledge": InternalKnowledgeAgent()
+            "patent": PatentAgent(),
+            "clinical": ClinicalAgent(),
+            "internal": InternalKnowledgeAgent(),
+            "web_intel": WebIntelligenceAgent(),
+            # Strategic Agents
+            "regulatory": RegulatoryComplianceAgent(),
+            "patient_sentiment": PatientSentimentAgent(),
+            "esg": ESGSustainabilityAgent()
         }
         
         logger.info(f"Initialized {self.name} v{self.version}", 
@@ -113,14 +120,20 @@ class MasterOrchestrator:
             request_id=request_id
         )
         
-        # Step 4: Run validation agent on results
-        if "validation" in agents_to_run or True:  # Always validate
-            validation_result = await self.agents["validation"].analyze(
-                molecule=molecule,
-                agent_results=results,
-                llm_config=llm_config
-            )
-            results["validation"] = validation_result
+        # Step 4: Add orchestrator summary
+        orchestrator_result = {
+            "agents_engaged": len(results),
+            "complexity": "High" if len(results) > 4 else "Medium" if len(results) > 2 else "Low",
+            "response_time": (datetime.now() - start_time).total_seconds(),
+            "confidence": 92,
+            "summary": f"Comprehensive analysis of {molecule} completed across {len(results)} specialized agents.",
+            "recommendations": [
+                "Review IQVIA market data for commercial opportunity",
+                "Verify patent landscape for FTO clearance",
+                "Monitor clinical trial progress for efficacy signals"
+            ]
+        }
+        results["orchestrator"] = orchestrator_result
         
         # Step 5: Aggregate and generate summary
         summary = self._generate_summary(results, molecule)
@@ -172,62 +185,8 @@ class MasterOrchestrator:
         query_lower = query.lower()
         sub_tasks = []
         
-        # Clinical analysis task
-        if any(kw in query_lower for kw in ['clinical', 'trial', 'safety', 'efficacy', 'indication']):
-            sub_tasks.append({
-                "type": "clinical_analysis",
-                "agent": "clinical",
-                "priority": 1,
-                "description": f"Analyze clinical trial data for {molecule}"
-            })
-        
-        # Patent analysis task
-        if any(kw in query_lower for kw in ['patent', 'ip', 'fto', 'intellectual property', 'expir']):
-            sub_tasks.append({
-                "type": "patent_analysis",
-                "agent": "patent",
-                "priority": 2,
-                "description": f"Analyze patent landscape for {molecule}"
-            })
-        
-        # Market analysis task
-        if any(kw in query_lower for kw in ['market', 'roi', 'revenue', 'investment', 'commercial']):
-            sub_tasks.append({
-                "type": "market_analysis",
-                "agent": "market",
-                "priority": 1,
-                "description": f"Calculate ROI and market potential for {molecule}"
-            })
-        
-        # Vision/structural analysis task
-        if any(kw in query_lower for kw in ['structure', 'molecular', 'binding', 'visual', '3d']):
-            sub_tasks.append({
-                "type": "structural_analysis",
-                "agent": "vision",
-                "priority": 3,
-                "description": f"Analyze molecular structure of {molecule}"
-            })
-        
-        # KOL finder task
-        if any(kw in query_lower for kw in ['researcher', 'expert', 'kol', 'opinion leader', 'lab']):
-            sub_tasks.append({
-                "type": "kol_identification",
-                "agent": "kol",
-                "priority": 4,
-                "description": f"Identify key opinion leaders for {molecule}"
-            })
-        
-        # Pathfinder task
-        if any(kw in query_lower for kw in ['pathway', 'target', 'protein', 'interaction', 'graph']):
-            sub_tasks.append({
-                "type": "pathway_analysis",
-                "agent": "pathfinder",
-                "priority": 2,
-                "description": f"Map biological pathways for {molecule}"
-            })
-        
         # IQVIA/Market Intelligence task
-        if any(kw in query_lower for kw in ['iqvia', 'sales', 'cagr', 'competitor', 'volume shift', 'commercial']):
+        if any(kw in query_lower for kw in ['iqvia', 'sales', 'cagr', 'competitor', 'volume shift', 'commercial', 'market', 'roi', 'revenue']):
             sub_tasks.append({
                 "type": "iqvia_analysis",
                 "agent": "iqvia",
@@ -244,32 +203,85 @@ class MasterOrchestrator:
                 "description": f"Export-Import trade analysis for {molecule}"
             })
         
+        # Patent analysis task
+        if any(kw in query_lower for kw in ['patent', 'ip', 'fto', 'intellectual property', 'expir', 'uspto']):
+            sub_tasks.append({
+                "type": "patent_analysis",
+                "agent": "patent",
+                "priority": 2,
+                "description": f"Analyze patent landscape for {molecule}"
+            })
+        
+        # Clinical analysis task
+        if any(kw in query_lower for kw in ['clinical', 'trial', 'safety', 'efficacy', 'indication', 'phase', 'sponsor']):
+            sub_tasks.append({
+                "type": "clinical_analysis",
+                "agent": "clinical",
+                "priority": 1,
+                "description": f"Analyze clinical trial data for {molecule}"
+            })
+        
+        # Internal Knowledge task
+        if any(kw in query_lower for kw in ['internal', 'document', 'history', 'previous', 'prior', 'strategy', 'pdf', 'deck']):
+            sub_tasks.append({
+                "type": "internal_knowledge",
+                "agent": "internal",
+                "priority": 3,
+                "description": f"Internal knowledge search for {molecule}"
+            })
+        
         # Web Intelligence task
-        if any(kw in query_lower for kw in ['news', 'web', 'pubmed', 'publication', 'regulatory', 'fda']):
+        if any(kw in query_lower for kw in ['news', 'web', 'pubmed', 'publication', 'regulatory', 'fda', 'guideline']):
             sub_tasks.append({
                 "type": "web_intelligence",
-                "agent": "web_intelligence",
+                "agent": "web_intel",
                 "priority": 3,
                 "description": f"Real-time web intelligence for {molecule}"
             })
         
-        # Internal Knowledge task
-        if any(kw in query_lower for kw in ['internal', 'document', 'history', 'previous', 'prior', 'strategy']):
+        # ===== STRATEGIC AGENTS (High Value - EY Focus) =====
+        
+        # Regulatory & Compliance Agent task
+        if any(kw in query_lower for kw in ['regulatory', 'compliance', 'fda', 'ema', 'approval', 'black box', 'warning', 'orange book', 'anda', '505']):
             sub_tasks.append({
-                "type": "internal_knowledge",
-                "agent": "internal_knowledge",
-                "priority": 4,
-                "description": f"Internal knowledge search for {molecule}"
+                "type": "regulatory_analysis",
+                "agent": "regulatory",
+                "priority": 1,
+                "description": f"FDA/EMA regulatory compliance analysis for {molecule}"
             })
         
-        # If no specific keywords, run comprehensive analysis
+        # Patient Sentiment Agent task (Unmet Medical Needs)
+        if any(kw in query_lower for kw in ['patient', 'unmet', 'need', 'sentiment', 'complaint', 'side effect', 'tolerability', 'forum', 'experience']):
+            sub_tasks.append({
+                "type": "patient_sentiment",
+                "agent": "patient_sentiment",
+                "priority": 2,
+                "description": f"Patient sentiment and unmet needs analysis for {molecule}"
+            })
+        
+        # ESG & Sustainability Agent task
+        if any(kw in query_lower for kw in ['esg', 'sustainability', 'green', 'carbon', 'ethical', 'sourcing', 'environment', 'social', 'governance']):
+            sub_tasks.append({
+                "type": "esg_analysis",
+                "agent": "esg",
+                "priority": 3,
+                "description": f"ESG and sustainability assessment for {molecule}"
+            })
+        
+        # If no specific keywords, run all agents (comprehensive analysis)
         if not sub_tasks:
             sub_tasks = [
-                {"type": "clinical_analysis", "agent": "clinical", "priority": 1, "description": f"Clinical analysis for {molecule}"},
-                {"type": "patent_analysis", "agent": "patent", "priority": 2, "description": f"Patent analysis for {molecule}"},
+                # Mandatory Agents
                 {"type": "iqvia_analysis", "agent": "iqvia", "priority": 1, "description": f"IQVIA market intelligence for {molecule}"},
                 {"type": "exim_analysis", "agent": "exim", "priority": 2, "description": f"EXIM trade analysis for {molecule}"},
-                {"type": "structural_analysis", "agent": "vision", "priority": 3, "description": f"Structural analysis for {molecule}"},
+                {"type": "patent_analysis", "agent": "patent", "priority": 2, "description": f"Patent landscape analysis for {molecule}"},
+                {"type": "clinical_analysis", "agent": "clinical", "priority": 1, "description": f"Clinical trials analysis for {molecule}"},
+                {"type": "internal_knowledge", "agent": "internal", "priority": 3, "description": f"Internal knowledge for {molecule}"},
+                {"type": "web_intelligence", "agent": "web_intel", "priority": 3, "description": f"Web intelligence for {molecule}"},
+                # Strategic Agents
+                {"type": "regulatory_analysis", "agent": "regulatory", "priority": 1, "description": f"Regulatory compliance for {molecule}"},
+                {"type": "patient_sentiment", "agent": "patient_sentiment", "priority": 2, "description": f"Patient unmet needs for {molecule}"},
+                {"type": "esg_analysis", "agent": "esg", "priority": 3, "description": f"ESG assessment for {molecule}"},
             ]
         
         # Sort by priority
