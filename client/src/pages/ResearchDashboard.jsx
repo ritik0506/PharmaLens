@@ -1,27 +1,20 @@
+// ResearchDashboard.jsx
 /**
  * PharmaLens Research Dashboard
  * ==============================
  * Main dashboard for drug repurposing analysis.
- * 
- * Features:
- * - Drug name input with auto-suggest
- * - API call to Node.js backend
- * - Agent status visualization with clickable cards
- * - Detailed agent results panel
- * - ROI results display
- * - Citation panel with hover-to-verify
- * - PDF report generation
- * - Watch & Alert module
- * - Interactive Knowledge Graph
+ *
+ * NOTE: uses the safe `useResearch()` hook from ResearchContext
+ * which returns safe defaults when the provider is missing.
  */
 
-import { useState, useContext } from 'react';
-import { 
-  Search, 
-  Loader2, 
-  Brain, 
-  TrendingUp, 
-  FileText, 
+import { useState } from 'react';
+import {
+  Search,
+  Loader2,
+  Brain,
+  TrendingUp,
+  FileText,
   Eye,
   DollarSign,
   AlertCircle,
@@ -37,7 +30,10 @@ import {
   ChevronDown,
   Sparkles
 } from 'lucide-react';
-import { ResearchContext } from '../context/ResearchContext';
+
+// Use the safe hook exported from ResearchContext (returns fallbacks when provider missing)
+import { useResearch } from '../context/ResearchContext';
+
 import { researchService } from '../services/api';
 import AgentStatusCard from '../components/dashboard/AgentStatusCard';
 import AgentDetailPanel from '../components/dashboard/AgentDetailPanel';
@@ -50,7 +46,9 @@ import KnowledgeGraph from '../components/graph/KnowledgeGraph';
 import StrategySelector from '../components/StrategySelector';
 
 const ResearchDashboard = () => {
-  const { privacyMode } = useContext(ResearchContext);
+  // useResearch gives safe defaults if provider isn't present
+  const { privacyMode } = useResearch();
+
   const [drugName, setDrugName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [results, setResults] = useState(null);
@@ -59,138 +57,108 @@ const ResearchDashboard = () => {
   const [activeTab, setActiveTab] = useState('results'); // 'results', 'graph', 'citations', 'watch'
   const [selectedAgent, setSelectedAgent] = useState(null);
   const [showStrategySelector, setShowStrategySelector] = useState(false);
-  
+
   // 7 Mandatory Agents + 3 Strategic Agents (EY Focus)
   const [agentStatuses, setAgentStatuses] = useState([
-    // Master Orchestrator
     { name: 'Master Orchestrator', status: 'idle', icon: Brain, key: 'orchestrator', color: 'indigo', category: 'core' },
-    // 6 Mandatory Worker Agents
     { name: 'IQVIA Insights Agent', status: 'idle', icon: BarChart3, key: 'iqvia', color: 'blue', category: 'mandatory' },
     { name: 'EXIM Trends Agent', status: 'idle', icon: Ship, key: 'exim', color: 'cyan', category: 'mandatory' },
     { name: 'Patent Landscape Agent', status: 'idle', icon: FileText, key: 'patent', color: 'purple', category: 'mandatory' },
     { name: 'Clinical Trials Agent', status: 'idle', icon: Shield, key: 'clinical', color: 'green', category: 'mandatory' },
     { name: 'Internal Knowledge Agent', status: 'idle', icon: Database, key: 'internal', color: 'orange', category: 'mandatory' },
     { name: 'Web Intelligence Agent', status: 'idle', icon: Globe, key: 'web_intel', color: 'pink', category: 'mandatory' },
-    // 3 Strategic Agents (High Value - EY Focus)
     { name: 'Regulatory Compliance', status: 'idle', icon: Shield, key: 'regulatory', color: 'red', category: 'strategic' },
     { name: 'Patient Sentiment', status: 'idle', icon: Users, key: 'patient_sentiment', color: 'rose', category: 'strategic' },
     { name: 'ESG & Sustainability', status: 'idle', icon: TrendingUp, key: 'esg', color: 'emerald', category: 'strategic' }
   ]);
-  
+
   /**
    * Handle research form submission
-   * Calls the Node.js backend which orchestrates AI agents
    */
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!drugName.trim()) {
       setError('Please enter a drug or molecule name');
       return;
     }
-    
+
     setIsLoading(true);
     setError(null);
     setResults(null);
     setSelectedAgent(null);
     setActiveTab('agents');
-    
-    // Update agent statuses to "thinking"
-    setAgentStatuses(prev => prev.map(agent => ({
-      ...agent,
-      status: 'thinking'
-    })));
-    
+
+    // update statuses to thinking
+    setAgentStatuses(prev => prev.map(agent => ({ ...agent, status: 'thinking' })));
+
     try {
-      // Call the research API
+      // Actual API call
       const response = await researchService.analyze(drugName, privacyMode);
-      
-      // Simulate progressive agent completion for all 10 agents
+
+      // Simulate progressive completion of agents
       const agentKeys = [
-        'Master Orchestrator', 'IQVIA Insights Agent', 'EXIM Trends Agent', 
-        'Patent Landscape Agent', 'Clinical Trials Agent', 'Internal Knowledge Agent', 
+        'Master Orchestrator', 'IQVIA Insights Agent', 'EXIM Trends Agent',
+        'Patent Landscape Agent', 'Clinical Trials Agent', 'Internal Knowledge Agent',
         'Web Intelligence Agent', 'Regulatory Compliance', 'Patient Sentiment', 'ESG & Sustainability'
       ];
       for (let i = 0; i < agentKeys.length; i++) {
         await new Promise(resolve => setTimeout(resolve, 150));
-        setAgentStatuses(prev => prev.map(agent => 
+        setAgentStatuses(prev => prev.map(agent =>
           agent.name === agentKeys[i] ? { ...agent, status: 'completed' } : agent
         ));
       }
-      
+
       setResults(response.data);
-      setActiveTab('agents'); // Show agents overview by default
+      setActiveTab('agents');
     } catch (err) {
       console.error('Research failed:', err);
       setError(err.response?.data?.error || 'Failed to process research request');
-      setAgentStatuses(prev => prev.map(agent => ({
-        ...agent,
-        status: 'error'
-      })));
+      setAgentStatuses(prev => prev.map(agent => ({ ...agent, status: 'error' })));
     } finally {
       setIsLoading(false);
     }
   };
 
-  /**
-   * Handle strategy query selection
-   */
   const handleStrategySelect = (query) => {
     setDrugName(query.molecule);
     setShowStrategySelector(false);
   };
 
-  /**
-   * Handle agent card click - Opens modal with agent details
-   */
   const handleAgentClick = (agent) => {
-    // Allow click if agent has completed, regardless of data availability
-    // AgentDetailPanel will show mock data if real data is not available
     if (agent.status === 'completed') {
       setSelectedAgent(selectedAgent === agent.name ? null : agent.name);
     }
   };
 
-  /**
-   * Get agent data from results - Maps all 10 agents to API response keys
-   */
   const getAgentData = (agentName) => {
     if (!results?.results) return null;
-    
+
     const keyMap = {
-      // Core
       'Master Orchestrator': 'orchestrator',
-      // Mandatory Agents
       'IQVIA Insights Agent': 'iqvia',
       'EXIM Trends Agent': 'exim',
       'Patent Landscape Agent': 'patent',
       'Clinical Trials Agent': 'clinical',
       'Internal Knowledge Agent': 'internal',
       'Web Intelligence Agent': 'web_intel',
-      // Strategic Agents
       'Regulatory Compliance': 'regulatory',
       'Patient Sentiment': 'patient_sentiment',
       'ESG & Sustainability': 'esg'
     };
-    
+
     return results.results[keyMap[agentName]] || null;
   };
-  
-  /**
-   * Reset the form and results
-   */
+
   const handleReset = () => {
     setDrugName('');
     setResults(null);
     setError(null);
     setSelectedAgent(null);
     setActiveTab('agents');
-    setAgentStatuses(prev => prev.map(agent => ({
-      ...agent,
-      status: 'idle'
-    })));
+    setAgentStatuses(prev => prev.map(agent => ({ ...agent, status: 'idle' })));
   };
-  
+
   return (
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
@@ -203,11 +171,10 @@ const ResearchDashboard = () => {
           Enter a drug or molecule name to analyze with our 10 specialized AI agents
         </p>
       </div>
-      
+
       {/* Search Form */}
       <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <form onSubmit={handleSubmit} className="space-y-4">
-          {/* Strategy Selector */}
           <div className="mb-4">
             <button
               type="button"
@@ -230,9 +197,7 @@ const ResearchDashboard = () => {
               <AutoSuggestInput
                 value={drugName}
                 onChange={setDrugName}
-                onSelect={(value) => {
-                  setDrugName(value);
-                }}
+                onSelect={(value) => setDrugName(value)}
                 placeholder="Enter drug name (e.g., Aspirin, Metformin, Imatinib, Semaglutide)"
                 disabled={isLoading}
               />
@@ -261,11 +226,11 @@ const ResearchDashboard = () => {
               )}
             </button>
           </div>
-          
+
           {/* Mode Indicator */}
           <div className={`text-sm text-center py-3 rounded-xl flex items-center justify-center space-x-2 ${
-            privacyMode === 'secure' 
-              ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200' 
+            privacyMode === 'secure'
+              ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200'
               : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
           }`}>
             <Shield className="w-4 h-4" />
@@ -275,16 +240,16 @@ const ResearchDashboard = () => {
           </div>
         </form>
       </div>
-      
-      {/* Error Display */}
+
+      {/* Error */}
       {error && (
         <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
           <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
           <span className="text-red-700">{error}</span>
         </div>
       )}
-      
-      {/* Agent Status Cards - Clickable Overview */}
+
+      {/* Agent Status Cards */}
       {(isLoading || results) && (
         <div className="bg-white rounded-2xl shadow-lg p-6 space-y-5">
           <div className="flex items-center justify-between">
@@ -308,10 +273,10 @@ const ResearchDashboard = () => {
               </div>
             )}
           </div>
-          
+
           <div className="grid grid-cols-2 md:grid-cols-5 lg:grid-cols-5 gap-4">
             {agentStatuses.map((agent, index) => (
-              <AgentStatusCard 
+              <AgentStatusCard
                 key={agent.name}
                 name={agent.name}
                 status={agent.status}
@@ -325,7 +290,7 @@ const ResearchDashboard = () => {
           </div>
         </div>
       )}
-      
+
       {/* Loading State */}
       {isLoading && (
         <div className="bg-white rounded-2xl shadow-lg p-8 text-center">
@@ -351,11 +316,11 @@ const ResearchDashboard = () => {
           </div>
         </div>
       )}
-      
+
       {/* Results Display */}
       {results && !isLoading && (
         <div className="space-y-6">
-          {/* Success Header - Enhanced */}
+          {/* Success Header */}
           <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 rounded-2xl p-1 shadow-lg shadow-green-200">
             <div className="bg-white rounded-xl p-5 flex items-center justify-between">
               <div className="flex items-center space-x-4">
@@ -365,18 +330,18 @@ const ResearchDashboard = () => {
                 <div>
                   <h3 className="text-xl font-bold text-gray-900">Analysis Complete!</h3>
                   <p className="text-gray-500 text-sm mt-0.5">
-                    <span className="font-medium text-emerald-600">{drugName}</span> analyzed successfully • 
+                    <span className="font-medium text-emerald-600">{drugName}</span> analyzed successfully •
                     <span className="text-gray-400 ml-1">{results.results?.processingTimeMs || 0}ms</span>
                   </p>
                 </div>
               </div>
-              <ReportGenerator 
-                data={results} 
-                molecule={drugName} 
+              <ReportGenerator
+                data={results}
+                molecule={drugName}
               />
             </div>
           </div>
-          
+
           {/* Tabs Navigation */}
           <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
             <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1">
@@ -404,18 +369,15 @@ const ResearchDashboard = () => {
                 </nav>
               </div>
             </div>
-            
+
             {/* Tab Content */}
             <div className="p-6">
-              {/* Results/Summary Tab */}
+              {/* Results Tab */}
               {activeTab === 'results' && (
                 <div className="space-y-6">
-                  {/* ROI Calculator Card */}
                   <ROICalculator data={results.results?.market} molecule={drugName} />
-                  
-                  {/* Additional Results Grid */}
+
                   <div className="grid md:grid-cols-2 gap-6">
-                    {/* Clinical Summary */}
                     {results.results?.clinical && (
                       <div className="bg-gray-50 rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -438,8 +400,7 @@ const ResearchDashboard = () => {
                         </div>
                       </div>
                     )}
-                    
-                    {/* Patent Summary */}
+
                     {results.results?.patent && (
                       <div className="bg-gray-50 rounded-xl p-6">
                         <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -463,8 +424,7 @@ const ResearchDashboard = () => {
                       </div>
                     )}
                   </div>
-                  
-                  {/* Validation Summary */}
+
                   {results.results?.validation && (
                     <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
@@ -495,33 +455,30 @@ const ResearchDashboard = () => {
                   )}
                 </div>
               )}
-              
-              {/* Knowledge Graph Tab */}
+
               {activeTab === 'graph' && (
-                <KnowledgeGraph 
+                <KnowledgeGraph
                   molecule={drugName}
                   agentResults={results.results}
                 />
               )}
-              
-              {/* Citations Tab */}
+
               {activeTab === 'citations' && (
-                <CitationPanel 
+                <CitationPanel
                   agentResults={results.results}
                   molecule={drugName}
                 />
               )}
-              
-              {/* Watch & Alert Tab */}
+
               {activeTab === 'watch' && (
-                <WatchAlertModule 
+                <WatchAlertModule
                   agentResults={results.results}
                   molecule={drugName}
                 />
               )}
             </div>
           </div>
-          
+
           {/* New Research Button */}
           <div className="text-center">
             <button
@@ -534,7 +491,7 @@ const ResearchDashboard = () => {
         </div>
       )}
 
-      {/* Agent Detail Modal - Renders at root level for proper overlay */}
+      {/* Agent Detail Modal */}
       {selectedAgent && (
         <AgentDetailPanel
           agent={agentStatuses.find(a => a.name === selectedAgent)}
