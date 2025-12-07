@@ -60,3 +60,35 @@
 {"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-05T11:53:33.899Z","url":"/api/analyze","version":"1.0.0"}
 {"level":"error","message":"AI Engine response error Request failed with status code 500","service":"pharmalens-server","status":500,"timestamp":"2025-12-05T11:55:17.762Z","url":"/api/analyze","version":"1.0.0"}
 {"duration":2333,"error":"Request failed with status code 500","level":"error","message":"Research processing failed","requestId":"216c5819-76a4-446e-aaaf-10a5d8091f2f","service":"pharmalens-server","stack":"AxiosError: Request failed with status code 500\n    at settle (D:\\Project\\PharmaLens\\server\\node_modules\\axios\\dist\\node\\axios.cjs:2106:12)\n    at IncomingMessage.handleStreamEnd (D:\\Project\\PharmaLens\\server\\node_modules\\axios\\dist\\node\\axios.cjs:3491:11)\n    at IncomingMessage.emit (node:events:531:35)\n    at endReadableNT (node:internal/streams/readable:1698:12)\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)\n    at Axios.request (D:\\Project\\PharmaLens\\server\\node_modules\\axios\\dist\\node\\axios.cjs:4731:41)\n    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)\n    at async Object.analyzeCompound (D:\\Project\\PharmaLens\\server\\src\\services\\aiEngineService.js:74:22)\n    at async processResearch (D:\\Project\\PharmaLens\\server\\src\\controllers\\researchController.js:86:29)","timestamp":"2025-12-05T11:55:17.764Z","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-05T18:20:09.295Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T05:49:42.688Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:22:38.411Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:23:14.359Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:28:46.964Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:33:58.575Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:36:31.438Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:39:12.470Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:45:51.102Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:50:27.786Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:59:28.425Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T06:59:57.114Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:05:50.329Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:06:24.491Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:07:29.934Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:11:05.306Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:11:48.261Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:12:21.520Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:13:10.242Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:15:09.471Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:15:32.988Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:15:47.123Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:29:37.956Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:37:20.830Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:39:13.954Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:39:46.984Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:55:36.515Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T07:59:27.976Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T08:08:10.065Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T09:17:10.992Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T09:41:28.343Z","url":"/api/analyze","version":"1.0.0"}
+{"level":"error","message":"AI Engine response error Error","service":"pharmalens-server","timestamp":"2025-12-06T09:43:02.143Z","url":"/api/analyze","version":"1.0.0"}
