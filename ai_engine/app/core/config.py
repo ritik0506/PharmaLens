@@ -23,15 +23,28 @@ class Settings(BaseSettings):
     HOST: str = "0.0.0.0"
     PORT: int = 8000
     
-    # Cloud AI (OpenAI)
+    # Cloud AI - OpenAI GPT-4
     OPENAI_API_KEY: Optional[str] = None
-    OPENAI_MODEL: str = "gpt-4"
+    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_ENABLED: bool = False
+    
+    # Cloud AI - Anthropic Claude
+    ANTHROPIC_API_KEY: Optional[str] = None
+    ANTHROPIC_MODEL: str = "claude-3-5-sonnet-20241022"
+    ANTHROPIC_ENABLED: bool = False
+    
+    # Legacy setting
     CLOUD_ENABLED: bool = True
     
-    # Local AI (Llama 3)
+    # Local AI (Llama 3 via Ollama)
     LOCAL_MODEL_PATH: Optional[str] = None
-    LOCAL_MODEL_NAME: str = "llama-3-8b"
+    LOCAL_MODEL_NAME: str = "llama3:8b"
     LOCAL_ENABLED: bool = True
+    OLLAMA_BASE_URL: str = "http://localhost:11434"
+    OLLAMA_MODEL: str = "llama3:8b"
+    
+    # Default LLM Provider
+    DEFAULT_LLM_PROVIDER: str = "ollama"  # ollama, openai, anthropic
     
     # Node.js Backend
     NODE_BACKEND_URL: str = "http://localhost:3001"

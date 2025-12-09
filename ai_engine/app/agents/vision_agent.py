@@ -16,6 +16,9 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 import structlog
+from ..services.llm_service import get_llm_service
+from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +37,7 @@ class VisionAgent:
     def __init__(self):
         self.name = "VisionAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         logger.info(f"Initialized {self.name} v{self.version}")
     
     async def analyze(self, molecule: str, llm_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,23 +63,26 @@ class VisionAgent:
         # Simulate processing (vision models typically take longer)
         await asyncio.sleep(random.uniform(1.0, 2.5))
         
+        # Generate drug-specific vision data
+        vision_data = DrugDataGenerator.get_vision_data(molecule)
+        
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
             
             # Structure Analysis
             "structure_analyzed": True,
-            "molecular_weight": round(random.uniform(200, 800), 2),
+            "molecular_weight": vision_data["molecular_weight"],
             "molecular_formula": self._generate_formula(),
             "smiles_notation": self._generate_smiles(molecule),
             
             # Binding Sites
-            "binding_sites_identified": random.randint(2, 6),
+            "binding_sites_identified": vision_data["binding_sites_identified"],
             "primary_target": random.choice([
                 "Kinase Domain", "GPCR", "Ion Channel", 
                 "Nuclear Receptor", "Enzyme Active Site"
             ]),
-            "binding_affinity_score": round(random.uniform(6.5, 9.8), 2),
+            "binding_affinity_score": vision_data["binding_affinity_score"],
             
             # Similarity Analysis
             "similar_compounds": self._generate_similar_compounds(),
@@ -83,18 +90,18 @@ class VisionAgent:
             
             # Chemical Properties
             "properties": {
-                "logP": round(random.uniform(-1, 5), 2),
-                "pKa": round(random.uniform(3, 11), 2),
-                "hbd": random.randint(0, 5),  # Hydrogen bond donors
-                "hba": random.randint(1, 10),  # Hydrogen bond acceptors
-                "rotatable_bonds": random.randint(1, 12),
-                "tpsa": round(random.uniform(20, 140), 1),  # Topological polar surface area
-                "lipinski_violations": random.randint(0, 2)
+                "logP": vision_data["logP"],
+                "pKa": vision_data["pKa"],
+                "hbd": vision_data["hbd"],
+                "hba": vision_data["hba"],
+                "rotatable_bonds": vision_data["rotatable_bonds"],
+                "tpsa": vision_data["tpsa"],
+                "lipinski_violations": vision_data["lipinski_violations"]
             },
             
             # Druglikeness
-            "druglikeness_score": round(random.uniform(0.6, 0.95), 2),
-            "bioavailability_score": round(random.uniform(0.5, 0.9), 2),
+            "druglikeness_score": vision_data["druglikeness_score"],
+            "bioavailability_score": vision_data["bioavailability_score"],
             
             # 3D Visualization
             "visualization": {

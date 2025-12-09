@@ -16,6 +16,9 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 import structlog
+from ..services.llm_service import get_llm_service
+from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +37,7 @@ class ClinicalAgent:
     def __init__(self):
         self.name = "ClinicalAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         logger.info(f"Initialized {self.name} v{self.version}")
     
     async def analyze(self, molecule: str, llm_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -53,43 +57,64 @@ class ClinicalAgent:
             "clinical_analysis_started",
             molecule=molecule,
             agent=self.name,
-            model=llm_config.get("model")
+            model=llm_config.get("model"),
+            provider=llm_config.get("provider")
         )
         
         # Simulate processing
         await asyncio.sleep(random.uniform(0.8, 2.0))
         
-        # Generate mock clinical data
-        trials_count = random.randint(15, 60)
+        # Generate drug-specific clinical data (consistent for same drug)
+        clinical_data = DrugDataGenerator.get_clinical_data(molecule)
+        
+        # Try to get LLM-enhanced interpretation if provider is configured
+        llm_interpretation = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = PromptTemplates.clinical_trial_interpretation(molecule, clinical_data)
+                llm_interpretation = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert clinical research analyst. Provide concise, professional analysis.",
+                    temperature=0.7,
+                    max_tokens=1000
+                )
+                logger.info(
+                    "llm_enhancement_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
         
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
             
             # Trial Overview
-            "total_trials_found": trials_count,
-            "active_trials": random.randint(3, 15),
-            "completed_trials": trials_count - random.randint(3, 15),
+            "total_trials_found": clinical_data["total_trials"],
+            "active_trials": clinical_data["active_trials"],
+            "completed_trials": clinical_data["total_trials"] - clinical_data["active_trials"],
             
             # Phase Distribution
-            "phase_distribution": {
-                "phase_1": random.randint(5, 15),
-                "phase_2": random.randint(8, 20),
-                "phase_3": random.randint(3, 12),
-                "phase_4": random.randint(2, 8)
-            },
+            "phase_distribution": clinical_data["phase_distribution"],
             
             # Indications
-            "current_indications": self._generate_indications(random.randint(2, 4)),
+            "current_indications": clinical_data["indications"],
             "potential_new_indications": self._generate_indications(random.randint(2, 5)),
             
             # Safety Profile
-            "safety_score": round(random.uniform(7.0, 9.5), 1),
+            "safety_score": clinical_data["safety_score"],
             "adverse_events": self._generate_adverse_events(),
             "black_box_warning": random.choice([True, False, False, False]),
             
             # Efficacy
-            "efficacy_rating": random.choice(["High", "Moderate-High", "Moderate"]),
+            "efficacy_rating": clinical_data["efficacy_rating"],
             "primary_endpoint_success_rate": f"{random.randint(55, 85)}%",
             
             # Regulatory
@@ -99,17 +124,23 @@ class ClinicalAgent:
                 "pmda": random.choice(["Approved", "Under Review", "Not Filed"])
             },
             
+            # LLM Enhancement
+            "llm_enhanced": llm_interpretation is not None,
+            "llm_interpretation": llm_interpretation if llm_interpretation else "Deterministic analysis mode - enable LLM for enhanced insights",
+            
             # Metadata
             "agent": self.name,
             "version": self.version,
             "model_used": llm_config.get("model"),
+            "provider_used": llm_config.get("provider", "deterministic"),
             "processing_time_ms": round((datetime.now() - start_time).total_seconds() * 1000, 2)
         }
         
         logger.info(
             "clinical_analysis_completed",
             molecule=molecule,
-            trials_found=trials_count
+            trials_found=clinical_data["total_trials"],
+            llm_enhanced=result["llm_enhanced"]
         )
         
         return result

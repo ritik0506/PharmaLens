@@ -16,6 +16,9 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 
 import structlog
+from ..services.llm_service import get_llm_service
+from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -34,6 +37,7 @@ class PatentAgent:
     def __init__(self):
         self.name = "PatentAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         logger.info(f"Initialized {self.name} v{self.version}")
     
     async def analyze(self, molecule: str, llm_config: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,30 +63,36 @@ class PatentAgent:
         # Simulate processing
         await asyncio.sleep(random.uniform(0.5, 1.2))
         
-        # Generate expiration date (2-8 years from now)
-        expiration_date = datetime.now() + timedelta(days=random.randint(730, 2920))
+        # Generate drug-specific patent data (consistent for same drug)
+        patent_data = DrugDataGenerator.get_patent_data(molecule)
+        
+        # Generate expiration date based on patent status
+        if patent_data.get("patent_cliff_years", 0) > 0:
+            expiration_date = datetime.now() + timedelta(days=int(patent_data["patent_cliff_years"] * 365))
+        else:
+            expiration_date = datetime.now() - timedelta(days=365)  # Already expired
         
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
             
             # Patent Overview
-            "total_patents": random.randint(10, 50),
-            "active_patents": random.randint(5, 25),
+            "total_patents": patent_data["active_patents"] + patent_data["expired_patents"],
+            "active_patents": patent_data["active_patents"],
             "pending_applications": random.randint(2, 10),
             
             # Key Dates
             "earliest_expiration": expiration_date.strftime("%Y-%m-%d"),
             "latest_expiration": (expiration_date + timedelta(days=random.randint(365, 1825))).strftime("%Y-%m-%d"),
-            "patent_term_extensions": random.choice([True, False]),
+            "patent_term_extensions": patent_data["active_patents"] > 5,
             
             # Freedom to Operate
-            "freedom_to_operate": random.choice(["Clear", "Moderate Risk", "High Risk"]),
-            "fto_score": round(random.uniform(6.0, 9.5), 1),
-            "blocking_patents": random.randint(0, 3),
+            "freedom_to_operate": patent_data["fto_risk_level"],
+            "fto_score": round(10.0 - (0.5 * len(patent_data["fto_risk_level"])), 1),  # Higher risk = lower score
+            "blocking_patents": 0 if patent_data["fto_risk_level"] == "Very Low" else random.randint(0, 3),
             
             # IP Holders
-            "key_patent_holders": self._generate_patent_holders(),
+            "key_patent_holders": patent_data["key_patent_holders"],
             "licensing_opportunities": random.choice(["Available", "Limited", "None"]),
             
             # Geographic Coverage

@@ -17,6 +17,9 @@ from datetime import datetime
 from typing import Dict, Any, List
 
 import structlog
+from ..services.llm_service import get_llm_service
+from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -71,13 +74,16 @@ class IQVIAInsightsAgent:
         # Simulate IQVIA API query
         await asyncio.sleep(random.uniform(0.6, 1.3))
         
+        # Get drug-specific market data
+        iqvia_data = DrugDataGenerator.get_iqvia_data(molecule)
+        
         # Determine therapy area
         therapy_area = self._infer_therapy_area(molecule)
         
-        # Generate comprehensive analysis
-        market_size = self._analyze_market_size(molecule, therapy_area)
-        cagr_analysis = self._calculate_cagr(therapy_area)
-        sales_trends = self._analyze_sales_trends(molecule)
+        # Generate comprehensive analysis using drug-specific data
+        market_size = self._analyze_market_size(molecule, therapy_area, iqvia_data)
+        cagr_analysis = self._calculate_cagr(therapy_area, iqvia_data)
+        sales_trends = self._analyze_sales_trends(molecule, iqvia_data)
         volume_shifts = self._identify_volume_shifts(molecule)
         competitors = self._analyze_competitors(molecule)
         market_segments = self._analyze_segments(molecule)
@@ -90,11 +96,11 @@ class IQVIAInsightsAgent:
             
             # Market Size Analysis
             "market_size": market_size,
-            "global_market_size_usd_bn": market_size["total_market_usd_bn"],
+            "global_market_size_usd_bn": iqvia_data["global_market_size_usd_bn"],
             
             # CAGR Analysis (5-Year)
             "cagr_analysis": cagr_analysis,
-            "five_year_cagr": cagr_analysis["five_year_cagr"],
+            "five_year_cagr": iqvia_data["five_year_cagr"],
             
             # Sales Trends
             "sales_trends": sales_trends,
@@ -165,32 +171,29 @@ class IQVIAInsightsAgent:
         else:
             return random.choice(list(self.therapy_areas.keys()))
     
-    def _analyze_market_size(self, molecule: str, therapy_area: str) -> Dict[str, Any]:
+    def _analyze_market_size(self, molecule: str, therapy_area: str, iqvia_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze market size for the therapy area."""
-        base_data = self.therapy_areas.get(therapy_area, {"base_size": 50, "growth": 8.0})
-        
-        total_market = base_data["base_size"] * random.uniform(0.8, 1.3)
-        molecule_share = random.uniform(0.02, 0.15)
+        total_market = iqvia_data["global_market_size_usd_bn"]
+        molecule_share = iqvia_data["market_share_percent"] / 100
         
         return {
             "therapy_area_market_usd_bn": round(total_market, 2),
             "total_market_usd_bn": round(total_market, 2),
             "molecule_market_usd_bn": round(total_market * molecule_share, 2),
             "molecule_market_share": f"{molecule_share * 100:.1f}%",
-            "market_growth_rate": f"{base_data['growth']:.1f}%",
-            "market_maturity": random.choice(["Growth", "Mature", "Emerging"]),
-            "market_size_ranking": f"#{random.randint(1, 20)} in {therapy_area.title()}"
+            "market_growth_rate": f"{iqvia_data['five_year_cagr']:.1f}%",
+            "market_maturity": iqvia_data["sales_trend"],
+            "market_size_ranking": f"#{int(molecule_share * 100)} in {therapy_area.title()}"
         }
     
-    def _calculate_cagr(self, therapy_area: str) -> Dict[str, Any]:
+    def _calculate_cagr(self, therapy_area: str, iqvia_data: Dict[str, Any]) -> Dict[str, Any]:
         """Calculate 5-year CAGR analysis."""
-        base_data = self.therapy_areas.get(therapy_area, {"growth": 8.0})
-        base_cagr = base_data["growth"]
+        base_cagr = iqvia_data["five_year_cagr"]
         
         return {
             "five_year_cagr": f"{base_cagr:.1f}%",
-            "historical_cagr_3y": f"{base_cagr * random.uniform(0.8, 1.1):.1f}%",
-            "projected_cagr_5y": f"{base_cagr * random.uniform(0.9, 1.2):.1f}%",
+            "historical_cagr_3y": f"{base_cagr * 0.9:.1f}%",
+            "projected_cagr_5y": f"{base_cagr * 1.1:.1f}%",
             "cagr_breakdown": {
                 "volume_growth": f"{base_cagr * 0.4:.1f}%",
                 "price_growth": f"{base_cagr * 0.3:.1f}%",
@@ -210,7 +213,7 @@ class IQVIAInsightsAgent:
             ]
         }
     
-    def _analyze_sales_trends(self, molecule: str) -> Dict[str, Any]:
+    def _analyze_sales_trends(self, molecule: str, iqvia_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze sales trends."""
         quarters = ["Q1'23", "Q2'23", "Q3'23", "Q4'23", "Q1'24", "Q2'24", "Q3'24", "Q4'24"]
         base_sales = random.uniform(500, 2000)
@@ -296,10 +299,12 @@ class IQVIAInsightsAgent:
         
         for i, company in enumerate(selected):
             if i < 4:
-                share = random.randint(max(5, remaining // 3), min(35, remaining - 10))
+                min_val = max(5, remaining // 3)
+                max_val = max(min_val + 1, min(35, remaining - 10))  # Ensure max_val > min_val
+                share = random.randint(min_val, max_val)
                 remaining -= share
             else:
-                share = remaining
+                share = max(0, remaining)  # Last one gets the rest
             
             shares.append({
                 "rank": i + 1,

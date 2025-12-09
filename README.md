@@ -32,21 +32,13 @@ cd PharmaLens
 ```bash
 cd ai_engine
 
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+# Install dependencies (globally or in venv)
 pip install -r requirements.txt
 
 # Copy environment file
 copy .env.example .env
-# Edit .env and add your API keys if needed
+# Edit .env and add your OpenAI API key for LLM features
+# Note: App works in deterministic mode without API key
 ```
 
 ### 3. Set Up Server (Node.js Backend)
@@ -77,40 +69,53 @@ copy .env.example .env
 
 ## Running the Application
 
-### Terminal 1: Start AI Engine
+### Option 1: Quick Start (Windows - Recommended)
+```powershell
+# Run the startup script (starts all services automatically)
+.\start.ps1
+```
+
+### Option 2: Manual Start
+
+**Terminal 1: Start AI Engine**
 ```bash
 cd ai_engine
-# Activate virtual environment first
-venv\Scripts\activate  # Windows
-# or: source venv/bin/activate  # macOS/Linux
-
 python -m uvicorn app.main:app --reload --port 8000
 ```
 
-### Terminal 2: Start Server
+**Terminal 2: Start Server**
 ```bash
 cd server
 npm start
 ```
 
-### Terminal 3: Start Client
+**Terminal 3: Start Client**
 ```bash
 cd client
 npm run dev
 ```
 
+> **Note**: No virtual environment is required if Python dependencies are installed globally.
+
 ## Access the Application
 
-- **Frontend**: http://localhost:5173
+- **Frontend**: http://localhost:5173 (or 5174 if 5173 is in use)
 - **API Server**: http://localhost:3001
 - **AI Engine**: http://localhost:8000
 
 ## Environment Variables
 
 ### AI Engine (.env)
-- `OPENAI_API_KEY`: Your OpenAI API key (optional, for cloud mode)
+- `OPENAI_API_KEY`: Your OpenAI API key (optional, enables GPT-4 powered agents)
 - `CLOUD_ENABLED`: Enable/disable cloud LLM
 - `LOCAL_ENABLED`: Enable/disable local model
+- `LOCAL_MODEL_PATH`: Path to local Llama model file (.gguf)
+
+**Note**: Application works perfectly without LLM configuration using deterministic responses.
+
+**To enable AI-powered insights:**
+- **Quick Setup**: Run `.\setup-llm.ps1` (interactive configuration)
+- **Detailed Guide**: See `LLM_SETUP_GUIDE.md`
 
 ### Server (.env)
 - `PORT`: Server port (default: 3001)
@@ -122,11 +127,20 @@ npm run dev
 
 ## Features
 
-- AI-powered pharmaceutical analysis
-- Real-time data processing
-- Interactive dashboard
-- Multi-agent system
-- Cloud and local LLM support
+- 🤖 **AI-powered pharmaceutical analysis** (Cloud GPT-4 or Local Llama)
+- ⚡ **Real-time data processing** with 12 specialized agents
+- 📊 **Interactive dashboard** with ROI calculations
+- 🎯 **Multi-agent system** (IQVIA, Clinical, Patent, Market, etc.)
+- 🔒 **Dual LLM support**: Cloud (OpenAI) or Local (HIPAA-compliant)
+- 🧪 **Deterministic mode** for testing without LLM
+
+### LLM Configuration
+The application supports three modes:
+1. **Cloud Mode** - OpenAI GPT-4 (best quality, requires API key)
+2. **Local Mode** - Llama models (HIPAA-compliant, requires model download)
+3. **Deterministic Mode** - Pre-programmed responses (no setup required)
+
+See `LLM_SETUP_GUIDE.md` for configuration instructions.
 
 ## Documentation
 

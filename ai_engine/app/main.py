@@ -71,7 +71,8 @@ from app.core.privacy_toggle import PrivacyManager
 class AnalyzeRequest(BaseModel):
     """Request model for compound analysis"""
     molecule: str = Field(..., min_length=2, max_length=200, description="Name of the drug/compound")
-    mode: str = Field(default="cloud", pattern="^(secure|cloud)$", description="Processing mode")
+    mode: str = Field(default="auto", pattern="^(secure|cloud|auto)$", description="Processing mode: auto (detect best), secure (force local), cloud (any cloud provider)")
+    provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
     request_id: str = Field(..., description="Unique request identifier")
     agents: Optional[List[str]] = Field(
         default=["clinical", "patent", "market", "vision"],
@@ -84,7 +85,8 @@ class OrchestratedRequest(BaseModel):
     query: str = Field(..., min_length=5, description="Natural language research query")
     molecule: Optional[str] = Field(None, description="Specific molecule name if applicable")
     disease: Optional[str] = Field(None, description="Target disease if applicable")
-    mode: str = Field(default="cloud", pattern="^(secure|cloud)$")
+    mode: str = Field(default="auto", pattern="^(secure|cloud|auto)$", description="Processing mode: auto (detect best), secure (force local), cloud (any cloud provider)")
+    provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
     request_id: str = Field(..., description="Unique request identifier")
 
 
@@ -275,14 +277,15 @@ async def analyze_compound(request: AnalyzeRequest):
         "analyze_request_received",
         molecule=request.molecule,
         mode=request.mode,
+        provider=request.provider,
         request_id=request.request_id,
         agents=request.agents
     )
     
     try:
-        # Determine LLM based on mode
+        # Determine LLM based on mode and provider
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config(request.mode)
+        llm_config = privacy_manager.get_llm_config(request.mode, request.provider)
         
         logger.info(
             "processing_mode_selected",
@@ -447,13 +450,14 @@ async def orchestrate_analysis(request: OrchestratedRequest):
         query=request.query[:100],
         molecule=request.molecule,
         disease=request.disease,
+        provider=request.provider,
         request_id=request.request_id
     )
     
     try:
         orchestrator: MasterOrchestrator = app.state.orchestrator
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config(request.mode)
+        llm_config = privacy_manager.get_llm_config(request.mode, request.provider)
         
         result = await orchestrator.process_query(
             query=request.query,
@@ -488,7 +492,7 @@ async def validate_findings(request: dict):
     try:
         validation_agent: ValidationAgent = app.state.validation_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await validation_agent.analyze(
             molecule=request.get("molecule", "Unknown"),
@@ -522,7 +526,7 @@ async def find_kol(request: KOLRequest):
     try:
         kol_finder: KOLFinderAgent = app.state.kol_finder
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await kol_finder.analyze(
             molecule=request.molecule,
@@ -557,7 +561,7 @@ async def find_pathways(request: PathwayRequest):
     try:
         pathfinder: MolecularPathfinderAgent = app.state.pathfinder
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await pathfinder.analyze(
             molecule=request.molecule,
@@ -595,7 +599,7 @@ async def analyze_trade_intelligence(request: EXIMRequest):
     try:
         exim_agent: EXIMAgent = app.state.exim_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await exim_agent.analyze(
             molecule=request.molecule,
@@ -644,7 +648,7 @@ async def analyze_market_intelligence(request: IQVIARequest):
     try:
         iqvia_agent: IQVIAInsightsAgent = app.state.iqvia_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await iqvia_agent.analyze(
             molecule=request.molecule,
@@ -677,7 +681,7 @@ async def calculate_market_roi(request: IQVIARequest):
     try:
         iqvia_agent: IQVIAInsightsAgent = app.state.iqvia_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await iqvia_agent.calculate_roi(
             molecule=request.molecule,
@@ -715,9 +719,9 @@ async def gather_web_intelligence(request: WebIntelRequest):
     )
     
     try:
-        web_agent: WebIntelligenceAgent = app.state.web_intel_agent
+        web_agent: WebIntelligenceAgent = app.state.web_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("cloud")
+        llm_config = privacy_manager.get_llm_config("auto")
         
         result = await web_agent.analyze(
             query=request.query,
@@ -790,7 +794,7 @@ async def search_internal_knowledge(request: InternalKnowledgeRequest):
     try:
         internal_agent: InternalKnowledgeAgent = app.state.internal_knowledge_agent
         privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("local")  # Always use local LLM for internal docs
+        llm_config = privacy_manager.get_llm_config("secure")  # Always use local LLM (Ollama) for internal docs
         
         result = await internal_agent.analyze(
             query=request.query,
@@ -896,3 +900,4 @@ if __name__ == "__main__":
         reload=True,
         log_level="info"
     )
+

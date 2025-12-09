@@ -2,11 +2,12 @@
 PharmaLens LLM Service
 ======================
 Unified interface for LLM calls with retry logic, rate limiting, and error handling.
-Supports both OpenAI (cloud) and Llama (local) models.
+Supports OpenAI GPT-4, Anthropic Claude, Ollama (local), and Llama-cpp (local) models.
 """
 
 import time
 import asyncio
+import httpx
 from typing import Dict, Any, Optional, List
 from tenacity import (
     retry,
@@ -62,7 +63,9 @@ class LLMService:
     
     def __init__(self):
         self.openai_client = None
+        self.anthropic_client = None
         self.llama_model = None
+        self.ollama_client = None
         self.rate_limiter = RateLimiter(max_calls=50, time_window=60)
         self._initialized = False
     
@@ -80,8 +83,22 @@ class LLMService:
                 logger.error(f"Failed to initialize OpenAI client: {e}")
                 raise
     
+    def _init_anthropic(self, api_key: str):
+        """Initialize Anthropic Claude client"""
+        if not self.anthropic_client:
+            try:
+                from anthropic import AsyncAnthropic
+                self.anthropic_client = AsyncAnthropic(api_key=api_key)
+                logger.info("Anthropic Claude client initialized")
+            except ImportError:
+                logger.error("anthropic package not installed. Run: pip install anthropic")
+                raise
+            except Exception as e:
+                logger.error(f"Failed to initialize Anthropic client: {e}")
+                raise
+    
     def _init_llama(self, model_path: str):
-        """Initialize Llama model"""
+        """Initialize Llama model (llama-cpp-python)"""
         if not self.llama_model and model_path:
             try:
                 from llama_cpp import Llama
@@ -99,6 +116,19 @@ class LLMService:
                 logger.error(f"Failed to load Llama model: {e}")
                 raise
     
+    def _init_ollama(self, base_url: str):
+        """Initialize Ollama HTTP client"""
+        if not self.ollama_client:
+            try:
+                self.ollama_client = httpx.AsyncClient(
+                    base_url=base_url,
+                    timeout=120.0  # 2 minute timeout for Ollama
+                )
+                logger.info(f"Ollama client initialized at {base_url}")
+            except Exception as e:
+                logger.error(f"Failed to initialize Ollama client: {e}")
+                raise
+    
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
@@ -111,10 +141,11 @@ class LLMService:
         llm_config: Dict[str, Any],
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None
+        max_tokens: Optional[int] = None,
+        timeout: int = 60
     ) -> str:
         """
-        Generate completion using configured LLM (OpenAI or Llama).
+        Generate completion using configured LLM (OpenAI, Anthropic, Ollama, or Llama).
         
         Args:
             prompt: User prompt/query
@@ -122,35 +153,70 @@ class LLMService:
             system_prompt: Optional system instruction
             temperature: Override default temperature
             max_tokens: Override default max tokens
+            timeout: Timeout in seconds (default 60s)
             
         Returns:
             Generated text response
         """
-        provider = llm_config.get("provider", "openai")
+        provider = llm_config.get("provider", "ollama")
         
         # Apply rate limiting
         await self.rate_limiter.acquire()
         
         try:
+            # Wrap generation in timeout
             if provider == "openai":
-                return await self._generate_openai(
-                    prompt=prompt,
-                    llm_config=llm_config,
-                    system_prompt=system_prompt,
-                    temperature=temperature,
-                    max_tokens=max_tokens
+                result = await asyncio.wait_for(
+                    self._generate_openai(
+                        prompt=prompt,
+                        llm_config=llm_config,
+                        system_prompt=system_prompt,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    ),
+                    timeout=timeout
+                )
+            elif provider == "anthropic":
+                result = await asyncio.wait_for(
+                    self._generate_anthropic(
+                        prompt=prompt,
+                        llm_config=llm_config,
+                        system_prompt=system_prompt,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    ),
+                    timeout=timeout
+                )
+            elif provider == "ollama":
+                result = await asyncio.wait_for(
+                    self._generate_ollama(
+                        prompt=prompt,
+                        llm_config=llm_config,
+                        system_prompt=system_prompt,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    ),
+                    timeout=timeout
                 )
             elif provider == "local":
-                return await self._generate_llama(
-                    prompt=prompt,
-                    llm_config=llm_config,
-                    system_prompt=system_prompt,
-                    temperature=temperature,
-                    max_tokens=max_tokens
+                result = await asyncio.wait_for(
+                    self._generate_llama(
+                        prompt=prompt,
+                        llm_config=llm_config,
+                        system_prompt=system_prompt,
+                        temperature=temperature,
+                        max_tokens=max_tokens
+                    ),
+                    timeout=timeout
                 )
             else:
                 raise ValueError(f"Unknown provider: {provider}")
+            
+            return result
         
+        except asyncio.TimeoutError:
+            logger.error(f"LLM generation timeout after {timeout}s", provider=provider)
+            raise TimeoutError(f"{provider} generation exceeded {timeout}s timeout")
         except Exception as e:
             logger.error(f"LLM generation failed: {e}", provider=provider)
             raise
@@ -197,6 +263,101 @@ class LLMService:
         
         except Exception as e:
             logger.error(f"OpenAI API error: {e}")
+            raise
+    
+    async def _generate_anthropic(
+        self,
+        prompt: str,
+        llm_config: Dict[str, Any],
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Generate completion using Anthropic Claude API"""
+        
+        # Initialize Anthropic client if needed
+        api_key = llm_config.get("api_key")
+        if not api_key:
+            raise ValueError("Anthropic API key not configured")
+        
+        self._init_anthropic(api_key)
+        
+        # Call Anthropic API
+        try:
+            response = await self.anthropic_client.messages.create(
+                model=llm_config.get("model", "claude-3-5-sonnet-20241022"),
+                max_tokens=max_tokens or llm_config.get("max_tokens", 4096),
+                temperature=temperature or llm_config.get("temperature", 0.7),
+                system=system_prompt or "You are a helpful pharmaceutical research assistant.",
+                messages=[
+                    {"role": "user", "content": prompt}
+                ]
+            )
+            
+            result = response.content[0].text
+            logger.info(
+                "Anthropic completion generated",
+                model=llm_config.get("model"),
+                input_tokens=response.usage.input_tokens,
+                output_tokens=response.usage.output_tokens
+            )
+            return result
+        
+        except Exception as e:
+            logger.error(f"Anthropic API error: {e}")
+            raise
+    
+    async def _generate_ollama(
+        self,
+        prompt: str,
+        llm_config: Dict[str, Any],
+        system_prompt: Optional[str] = None,
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None
+    ) -> str:
+        """Generate completion using Ollama API"""
+        
+        # Initialize Ollama client if needed
+        base_url = llm_config.get("base_url", "http://localhost:11434")
+        self._init_ollama(base_url)
+        
+        # Prepare messages
+        messages = []
+        if system_prompt:
+            messages.append({"role": "system", "content": system_prompt})
+        messages.append({"role": "user", "content": prompt})
+        
+        # Call Ollama API
+        try:
+            response = await self.ollama_client.post(
+                "/api/chat",
+                json={
+                    "model": llm_config.get("model", "llama3:8b"),
+                    "messages": messages,
+                    "temperature": temperature or llm_config.get("temperature", 0.7),
+                    "stream": False,
+                    "options": {
+                        "num_predict": max_tokens or llm_config.get("max_tokens", 2048)
+                    }
+                }
+            )
+            response.raise_for_status()
+            
+            result_data = response.json()
+            result = result_data["message"]["content"]
+            
+            logger.info(
+                "Ollama completion generated",
+                model=llm_config.get("model"),
+                tokens=result_data.get("eval_count", 0)
+            )
+            return result
+        
+        except httpx.HTTPStatusError as e:
+            logger.error(f"Ollama API HTTP error: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Ollama API error: {e}")
             raise
     
     async def _generate_llama(

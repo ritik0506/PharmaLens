@@ -287,7 +287,7 @@ class MasterOrchestrator:
         request_id: str
     ) -> Dict[str, Any]:
         """
-        Execute multiple agents in parallel.
+        Execute multiple agents in TRUE parallel using asyncio.gather().
         
         Args:
             molecule: Target molecule
@@ -299,28 +299,42 @@ class MasterOrchestrator:
             Dictionary of agent results
         """
         results = {}
-        tasks = []
         
-        for agent_name in agents:
-            if agent_name in self.agents and agent_name != "validation":
+        # Prepare tasks with agent names
+        async def run_agent(agent_name: str):
+            """Run a single agent and return (name, result) tuple."""
+            try:
+                if agent_name not in self.agents or agent_name == "validation":
+                    return (agent_name, {"error": "Agent not found", "status": "skipped"})
+                
                 agent = self.agents[agent_name]
                 
+                # Call appropriate method
                 if agent_name == "market":
-                    task = agent.calculate_roi(molecule)
+                    result = await agent.calculate_roi(molecule)
                 else:
-                    task = agent.analyze(molecule, llm_config)
+                    result = await agent.analyze(molecule, llm_config)
                 
-                tasks.append((agent_name, task))
-        
-        # Execute all tasks concurrently
-        for agent_name, task in tasks:
-            try:
-                result = await task
-                results[agent_name] = result
                 logger.info(f"agent_completed", agent=agent_name, request_id=request_id)
+                return (agent_name, result)
+                
             except Exception as e:
                 logger.error(f"agent_failed", agent=agent_name, error=str(e))
-                results[agent_name] = {"error": str(e), "status": "failed"}
+                return (agent_name, {"error": str(e), "status": "failed"})
+        
+        # Create tasks for all agents
+        tasks = [run_agent(agent_name) for agent_name in agents]
+        
+        # Execute ALL tasks concurrently with asyncio.gather()
+        agent_results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Process results
+        for item in agent_results:
+            if isinstance(item, tuple):
+                agent_name, result = item
+                results[agent_name] = result
+            elif isinstance(item, Exception):
+                logger.error(f"agent_exception", error=str(item))
         
         return results
     

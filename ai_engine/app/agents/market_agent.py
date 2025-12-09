@@ -17,6 +17,9 @@ from datetime import datetime
 from typing import Dict, Any
 
 import structlog
+from ..services.llm_service import get_llm_service
+from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -36,6 +39,7 @@ class MarketAgent:
     def __init__(self):
         self.name = "MarketAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         logger.info(f"Initialized {self.name} v{self.version}")
     
     async def calculate_roi(self, molecule: str) -> Dict[str, Any]:
@@ -62,21 +66,16 @@ class MarketAgent:
         # Simulate processing time (real API would take longer)
         await asyncio.sleep(random.uniform(0.5, 1.5))
         
-        # Generate simulated ROI data
-        # Revenue projection: $100M - $500M range
-        projected_revenue = random.randint(100, 500)
+        # Generate drug-specific market data (consistent for same drug)
+        market_data = DrugDataGenerator.get_market_data(molecule)
         
-        # Development cost: $40M - $120M range
-        development_cost = random.randint(40, 120)
-        
-        # Calculate ROI percentage
-        roi_percentage = round(((projected_revenue - development_cost) / development_cost) * 100, 1)
-        
-        # Market metrics
-        market_size = round(random.uniform(5, 25), 1)  # Billions
-        cagr = round(random.uniform(4, 12), 1)  # Compound Annual Growth Rate
-        time_to_market = round(random.uniform(2, 5), 1)  # Years
-        probability_success = random.randint(50, 80)  # Percentage
+        projected_revenue = market_data["projected_revenue_millions"]
+        development_cost = market_data["development_cost_millions"]
+        roi_percentage = market_data["roi_percentage"]
+        market_size = market_data["market_size_billions"]
+        cagr = market_data["market_cagr_percent"]
+        time_to_market = market_data["time_to_market_years"]
+        probability_success = market_data["probability_of_success"]
         
         # Generate recommendation based on ROI
         if roi_percentage > 200:
@@ -116,7 +115,7 @@ class MarketAgent:
             "risk_level": "MEDIUM" if probability_success > 60 else "HIGH",
             
             # Competitive Analysis
-            "competitive_landscape": random.choice(["Low", "Moderate", "High"]),
+            "competitive_landscape": market_data.get("competitive_landscape", "Moderate"),
             "key_competitors": self._generate_competitors(),
             "patent_cliff_risk": random.choice(["Low", "Medium", "High"]),
             

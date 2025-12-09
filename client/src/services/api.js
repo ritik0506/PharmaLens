@@ -12,7 +12,7 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001';
 // Create axios instance with default configuration
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 120000, // 2 minute timeout for AI processing
+  timeout: 300000, // 5 minute timeout for comprehensive AI analysis
   headers: {
     'Content-Type': 'application/json'
   }
@@ -72,12 +72,14 @@ export const researchService = {
    * Analyze a drug/molecule for repurposing opportunities
    * @param {string} molecule - Name of the drug/compound
    * @param {string} mode - Processing mode ('secure' or 'cloud')
+   * @param {string} provider - AI model provider ('ollama', 'openai', 'anthropic')
    * @returns {Promise} API response with analysis results
    */
-  analyze: async (molecule, mode = 'cloud') => {
+  analyze: async (molecule, mode = 'cloud', provider = null) => {
     return apiClient.post('/api/research', {
       molecule,
-      mode
+      mode,
+      provider
     });
   },
   

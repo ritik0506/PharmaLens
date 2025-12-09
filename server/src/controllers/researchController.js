@@ -29,7 +29,7 @@ const processResearch = async (req, res) => {
   const startTime = Date.now();
 
   try {
-    const { molecule, mode = 'cloud' } = req.body;
+    const { molecule, mode = 'cloud', provider = null } = req.body;
 
     // Validate required fields
     if (!molecule || typeof molecule !== 'string') {
@@ -55,8 +55,11 @@ const processResearch = async (req, res) => {
     // Log research initiation
     auditLog.researchStarted(molecule, mode, requestId);
 
-    // Log processing mode for compliance
+    // Log processing mode and provider for compliance
     auditLog.processingMode(mode, requestId);
+    if (provider) {
+      logger.info('AI provider specified', { provider, requestId });
+    }
 
     // Determine which AI endpoint to use based on mode
     const aiConfig = {
@@ -79,6 +82,7 @@ const processResearch = async (req, res) => {
     auditLog.agentActivity('Orchestrator', 'DISPATCHING_AGENTS', { 
       molecule, 
       mode,
+      provider,
       requestId 
     });
 
@@ -87,7 +91,8 @@ const processResearch = async (req, res) => {
       molecule,
       mode,
       requestId,
-      agents: ['clinical', 'patent', 'market', 'vision']
+      agents: ['clinical', 'patent', 'market', 'vision'],
+      provider
     });
 
     // Calculate request duration

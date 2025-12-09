@@ -1,30 +1,45 @@
+// App.jsx
+import React from 'react';
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+
+import { ThemeProvider } from './context/ThemeContext';
 import { ResearchProvider } from './context/ResearchContext';
+import { ModelProvider } from './context/ModelContext';
+
 import Navbar from './components/layout/Navbar';
+import ThemeToggle from './components/ui/ThemeToggle';
+import ModelSwitcher from './components/layout/ModelSwitcher';
+
 import ResearchDashboard from './pages/ResearchDashboard';
 import ReportPreview from './pages/ReportPreview';
 
 /**
- * PharmaLens Application
- * ======================
- * Main application component with routing and context providers.
+ * PharmaLens Application - App.jsx
+ * - Wraps app with ThemeProvider + ResearchProvider + ModelProvider
+ * - Uses react-router v6 createBrowserRouter + RouterProvider
+ * - Keeps Layout used by each route so navbar/footer remain consistent
  */
 
-// Layout wrapper component
 function Layout({ children }) {
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#08101a] transition-colors">
       {/* Navigation */}
       <Navbar />
-      
+
+      {/* Top bar with model switcher and theme toggle */}
+      <div className="container mx-auto px-4 py-3 flex items-center justify-end gap-4">
+        <ModelSwitcher />
+        <ThemeToggle />
+      </div>
+
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         {children}
       </main>
-      
+
       {/* Footer */}
-      <footer className="bg-white border-t border-gray-200 py-6 mt-auto">
-        <div className="container mx-auto px-4 text-center text-gray-500 text-sm">
+      <footer className="bg-white dark:bg-[#071018] border-t border-gray-200 dark:border-white/6 py-6 mt-auto">
+        <div className="container mx-auto px-4 text-center text-gray-500 dark:text-gray-300 text-sm">
           © 2024 PharmaLens. Enterprise AI for Drug Repurposing.
         </div>
       </footer>
@@ -32,7 +47,7 @@ function Layout({ children }) {
   );
 }
 
-// Create router with future flags to suppress v7 warnings
+// Create router (you already had this - kept same routes)
 const router = createBrowserRouter(
   [
     {
@@ -54,9 +69,17 @@ const router = createBrowserRouter(
 
 function App() {
   return (
-    <ResearchProvider>
-      <RouterProvider router={router} />
-    </ResearchProvider>
+    // ThemeProvider at the top so entire app can read theme
+    <ThemeProvider defaultMode="auto">
+      {/* ModelProvider for AI model selection */}
+      <ModelProvider>
+        {/* ResearchProvider wraps the app so ResearchDashboard and children can use ResearchContext */}
+        <ResearchProvider>
+          {/* RouterProvider renders the routes configured above */}
+          <RouterProvider router={router} />
+        </ResearchProvider>
+      </ModelProvider>
+    </ThemeProvider>
   );
 }
 

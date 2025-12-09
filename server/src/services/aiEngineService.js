@@ -14,7 +14,7 @@ const AI_ENGINE_BASE_URL = process.env.AI_ENGINE_URL || 'http://localhost:8000';
 // Axios instance with default configuration
 const aiClient = axios.create({
   baseURL: AI_ENGINE_BASE_URL,
-  timeout: 120000, // 2 minute timeout for AI processing
+  timeout: 300000, // 5 minute timeout for comprehensive AI analysis
   headers: {
     'Content-Type': 'application/json',
     'X-Service': 'pharmalens-server'
@@ -64,18 +64,20 @@ aiClient.interceptors.response.use(
  * @param {string} params.mode - Processing mode (secure/cloud)
  * @param {string} params.requestId - Unique request identifier
  * @param {string[]} params.agents - List of agents to engage
+ * @param {string} params.provider - AI model provider (ollama/openai/anthropic)
  * @returns {Object} Aggregated analysis results
  */
-const analyzeCompound = async ({ molecule, mode, requestId, agents }) => {
+const analyzeCompound = async ({ molecule, mode, requestId, agents, provider }) => {
   try {
-    logger.info('Initiating compound analysis', { molecule, mode, requestId });
+    logger.info('Initiating compound analysis', { molecule, mode, requestId, provider });
 
     // Call the AI Engine analyze endpoint
     const response = await aiClient.post('/api/analyze', {
       molecule,
       mode,
       request_id: requestId,
-      agents
+      agents,
+      provider
     });
 
     // Log agent activities
