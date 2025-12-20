@@ -84,6 +84,44 @@ class ValidationAgent:
         confidence_scores = self._calculate_confidence(agent_results, risk_flags)
         critical_issues = self._identify_critical_issues(agent_results, risk_flags)
         
+        # Try to get LLM-enhanced critical validation
+        llm_validation = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = f"""Critically validate analysis for {molecule}:
+
+Risk Flags: {len(risk_flags)}
+Inconsistencies: {len(inconsistencies)}
+Data Quality: {round(random.uniform(0.7, 0.95), 2)}
+Critical Issues: {len(critical_issues)}
+
+Provide critical validation covering:
+1. Key concerns and red flags
+2. Data reliability assessment
+3. Recommended verification steps
+
+Be skeptical and identify potential issues. Keep response under 150 words."""
+                
+                llm_validation = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are a skeptical validator identifying potential issues and inconsistencies. Challenge assumptions.",
+                    temperature=0.5,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_validation_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
+        
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
@@ -116,6 +154,10 @@ class ValidationAgent:
                 "claims_flagged": random.randint(0, 3),
                 "confidence_level": random.choice(["HIGH", "MEDIUM", "HIGH"])
             },
+            
+            # LLM Enhancement
+            "llm_validation": llm_validation,
+            "llm_provider": llm_config.get("provider") if llm_validation else None,
             
             # Metadata
             "agent": self.name,

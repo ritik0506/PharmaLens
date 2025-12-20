@@ -18,6 +18,7 @@ from typing import Dict, Any, List
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -36,6 +37,7 @@ class EXIMAgent:
     def __init__(self):
         self.name = "EXIMAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         
         # Mock EXIM data sources
         self.trade_regions = ["China", "India", "Europe", "USA", "Japan", "South Korea"]
@@ -62,16 +64,58 @@ class EXIMAgent:
             agent=self.name
         )
         
+        # Get drug-specific data
+        exim_data = DrugDataGenerator.get_exim_data(molecule)
+        
         # Simulate API query to EXIM server
         await asyncio.sleep(random.uniform(0.5, 1.2))
         
         # Generate trade analysis
-        trade_flows = self._analyze_trade_flows(molecule)
-        sourcing_hubs = self._identify_sourcing_hubs(molecule)
-        supply_risks = self._assess_supply_risks(sourcing_hubs)
+        trade_flows = self._analyze_trade_flows(molecule, exim_data)
+        sourcing_hubs = self._identify_sourcing_hubs(molecule, exim_data)
+        supply_risks = self._assess_supply_risks(sourcing_hubs, exim_data)
         import_dependency = self._calculate_import_dependency(sourcing_hubs)
-        price_trends = self._analyze_price_trends(molecule)
-        trade_volume_chart = self._generate_trade_volume_chart(molecule)
+        price_trends = self._analyze_price_trends(molecule, exim_data)
+        trade_volume_chart = self._generate_trade_volume_chart(molecule, exim_data)
+        
+        # Try to get LLM-enhanced supply chain strategy
+        llm_supply_strategy = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                primary_source = sourcing_hubs[0]["country"] if sourcing_hubs else "Unknown"
+                prompt = f"""Analyze the supply chain for {molecule}:
+
+Primary Source: {primary_source}
+Trade Volume: {round(random.uniform(500, 5000), 1)} MT
+Supply Risk: {self._calculate_overall_risk(supply_risks)}
+Top Exporters: {', '.join([hub['country'] for hub in sourcing_hubs[:3]])}
+
+Provide concise supply chain strategy covering:
+1. Supply diversification opportunities
+2. Risk mitigation approaches
+3. Cost optimization strategies
+
+Keep response under 150 words."""
+                
+                llm_supply_strategy = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert pharmaceutical supply chain analyst.",
+                    temperature=0.6,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_supply_strategy_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
         
         result = {
             "molecule": molecule,
@@ -111,6 +155,10 @@ class EXIMAgent:
             # Strategic Recommendations
             "recommendations": self._generate_recommendations(supply_risks, import_dependency),
             
+            # LLM Enhancement
+            "llm_supply_strategy": llm_supply_strategy,
+            "llm_provider": llm_config.get("provider") if llm_supply_strategy else None,
+            
             # Metadata
             "data_sources": ["EXIM Trade Portal", "ITC TradeMap", "UN Comtrade", "Pharmexcil"],
             "agent": self.name,
@@ -127,7 +175,7 @@ class EXIMAgent:
         
         return result
     
-    def _analyze_trade_flows(self, molecule: str) -> List[Dict[str, Any]]:
+    def _analyze_trade_flows(self, molecule: str, exim_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Analyze global trade flows for the API."""
         flows = []
         
@@ -154,13 +202,13 @@ class EXIMAgent:
         
         return flows
     
-    def _identify_sourcing_hubs(self, molecule: str) -> List[Dict[str, Any]]:
+    def _identify_sourcing_hubs(self, molecule: str, exim_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Identify major sourcing hubs for the API."""
         hubs = []
         
         # Distribution of sourcing (should add up to ~100%)
-        china_share = random.randint(55, 75)
-        india_share = random.randint(15, 30)
+        china_share = exim_data["china_share"]
+        india_share = exim_data["india_share"]
         others_share = 100 - china_share - india_share
         
         hub_data = [
@@ -183,7 +231,7 @@ class EXIMAgent:
         
         return sorted(hubs, key=lambda x: x["market_share_percent"], reverse=True)
     
-    def _assess_supply_risks(self, sourcing_hubs: List[Dict]) -> List[Dict[str, Any]]:
+    def _assess_supply_risks(self, sourcing_hubs: List[Dict], exim_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Assess supply chain risks."""
         risks = []
         
@@ -266,7 +314,7 @@ class EXIMAgent:
         else:
             return "LOW"
     
-    def _analyze_price_trends(self, molecule: str) -> Dict[str, Any]:
+    def _analyze_price_trends(self, molecule: str, exim_data: Dict[str, Any]) -> Dict[str, Any]:
         """Analyze price trends for the API."""
         base_price = random.uniform(50, 500)
         
@@ -285,7 +333,7 @@ class EXIMAgent:
             ][:random.randint(2, 4)]
         }
     
-    def _generate_trade_volume_chart(self, molecule: str) -> Dict[str, Any]:
+    def _generate_trade_volume_chart(self, molecule: str, exim_data: Dict[str, Any]) -> Dict[str, Any]:
         """Generate trade volume chart data."""
         years = [2020, 2021, 2022, 2023, 2024, 2025]
         

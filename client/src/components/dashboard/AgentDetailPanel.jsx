@@ -28,7 +28,8 @@ import {
   Building2,
   Pill,
   FlaskConical,
-  BookOpen
+  BookOpen,
+  Sparkles
 } from 'lucide-react';
 
 const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
@@ -247,7 +248,65 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   };
 
   // Use provided data or generate mock data
+  // Debug: Log what data we received
+  console.log(`[AgentDetailPanel] Agent: ${agent.name}, Data received:`, data ? 'YES' : 'NO', data);
+  
   const agentData = data || generateMockData(agent.name, molecule || 'Drug');
+  const isRealData = !!data; // Track if we're using real or mock data
+
+  // Helper to render LLM insights section
+  const renderLLMInsights = () => {
+    // Determine the LLM field name based on agent
+    const llmFieldMap = {
+      'Master Orchestrator': 'llm_synthesis',
+      'IQVIA Insights Agent': 'llm_market_strategy',
+      'EXIM Trends Agent': 'llm_supply_strategy',
+      'Patent Landscape Agent': 'llm_strategy',
+      'Clinical Trials Agent': 'llm_insights',
+      'Internal Knowledge Agent': 'llm_synthesis',
+      'Web Intelligence Agent': 'llm_intelligence',
+      'Regulatory Compliance': 'llm_assessment',
+      'Patient Sentiment': 'llm_insights',
+      'ESG & Sustainability': 'llm_assessment',
+      'Vision Agent': 'llm_insights',
+      'Validation Agent': 'llm_validation'
+    };
+
+    const llmField = llmFieldMap[agent.name];
+    const llmContent = agentData[llmField];
+    const llmProvider = agentData.llm_provider;
+
+    if (!llmContent) return null;
+
+    return (
+      <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-xl p-5 border-2 border-purple-200">
+        <div className="flex items-start justify-between mb-3">
+          <h4 className="text-lg font-semibold text-gray-900 flex items-center">
+            <Sparkles className="w-5 h-5 mr-2 text-purple-600" />
+            AI-Generated Strategic Insights
+          </h4>
+          {llmProvider && (
+            <span className="px-3 py-1 bg-white border border-purple-300 rounded-full text-xs font-medium text-purple-700">
+              {llmProvider === 'openai' ? 'GPT-4' : 'Llama 3'} Analysis
+            </span>
+          )}
+        </div>
+        <div className="bg-white rounded-lg p-4 border border-purple-100">
+          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+            {llmContent}
+          </p>
+        </div>
+        {isRealData && (
+          <div className="mt-2 flex items-center text-xs text-purple-600">
+            <CheckCircle className="w-3 h-3 mr-1" />
+            Live AI Analysis • Real-time Data
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Add Sparkles icon to imports at top (it's already imported, so this is just a note)
 
   // Agent-specific configurations for all 10 agents (7 mandatory + 3 strategic)
   const agentConfigs = {
@@ -320,6 +379,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Clinical Agent Details
   const renderClinicalDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard 
@@ -400,6 +462,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Patent Agent Details
   const renderPatentDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       {/* Key Metrics */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard 
@@ -792,6 +857,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Regulatory Compliance Agent Details
   const renderRegulatoryDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Compliance Score" value={`${agentData.compliance_score || 85}/100`} icon={Shield} color="red" />
         <MetricCard label="Grade" value={agentData.compliance_grade || 'B'} icon={CheckCircle} color="green" />
@@ -848,6 +916,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Patient Sentiment Agent Details
   const renderPatientSentimentDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Sentiment" value={agentData.overall_sentiment || 'Mixed'} icon={Users} color="rose" />
         <MetricCard label="Unmet Needs" value={agentData.unmet_needs_count || 5} icon={AlertTriangle} color="yellow" />
@@ -924,6 +995,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render ESG & Sustainability Agent Details
   const renderESGDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="ESG Score" value={`${agentData.overall_esg_score || 72}/100`} icon={TrendingUp} color="emerald" />
         <MetricCard label="Rating" value={agentData.esg_rating || 'A'} icon={CheckCircle} color="green" />
@@ -1006,6 +1080,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Master Orchestrator Details
   const renderOrchestratorDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Agents Used" value={agentData.agents_engaged || 6} icon={Network} color="indigo" />
         <MetricCard label="Query Complexity" value={agentData.complexity || 'High'} icon={BarChart3} color="purple" />
@@ -1095,6 +1172,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
     
     return (
       <div className="space-y-6">
+        {/* LLM Insights - Show first if available */}
+        {renderLLMInsights()}
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard label="Market Size" value={getMarketSize()} icon={DollarSign} color="blue" />
           <MetricCard label="5Y CAGR" value={getCAGR()} icon={TrendingUp} color="green" />
@@ -1194,6 +1274,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
     
     return (
       <div className="space-y-6">
+        {/* LLM Insights */}
+        {renderLLMInsights()}
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <MetricCard label="Trade Volume" value={getTradeVolume()} icon={Ship} color="cyan" />
           <MetricCard label="Volume (MT)" value={`${agentData.total_trade_volume_mt || 850} MT`} icon={Ship} color="blue" />
@@ -1250,6 +1333,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Internal Knowledge Agent Details
   const renderInternalDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="Documents" value={agentData.documents_found || 12} icon={FileText} color="orange" />
         <MetricCard label="Relevance" value={`${agentData.relevance || 94}%`} icon={CheckCircle} color="green" />
@@ -1295,6 +1381,9 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
   // Render Web Intelligence Agent Details
   const renderWebIntelDetails = () => (
     <div className="space-y-6">
+      {/* LLM Insights */}
+      {renderLLMInsights()}
+      
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <MetricCard label="News Articles" value={agentData.news_count || 24} icon={Globe} color="pink" />
         <MetricCard label="Publications" value={agentData.publications || 156} icon={BookOpen} color="blue" />
@@ -1468,7 +1557,20 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
                 <AgentIcon className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h3 className="text-2xl font-bold text-white">{agent.name}</h3>
+                <h3 className="text-2xl font-bold text-white flex items-center">
+                  {agent.name}
+                  {!isRealData && (
+                    <span className="ml-3 px-2 py-1 bg-yellow-500/20 border border-yellow-300/30 rounded-md text-xs font-normal text-yellow-100">
+                      Sample Data
+                    </span>
+                  )}
+                  {isRealData && agentData.llm_provider && (
+                    <span className="ml-3 px-2 py-1 bg-green-500/20 border border-green-300/30 rounded-md text-xs font-normal text-green-100 flex items-center">
+                      <Sparkles className="w-3 h-3 mr-1" />
+                      AI Enhanced
+                    </span>
+                  )}
+                </h3>
                 <p className="text-white/80 text-sm mt-1">{config.description}</p>
               </div>
             </div>
@@ -1514,6 +1616,33 @@ const AgentDetailPanel = ({ agent, data, onClose, molecule }) => {
                 <h4 className="text-lg font-semibold text-gray-900">Detailed Analysis</h4>
               </div>
               {renderContent()}
+              
+              {/* Debug Panel - Only show in development or when explicitly needed */}
+              {(!isRealData || process.env.NODE_ENV === 'development') && (
+                <div className="mt-6 border-t-2 border-dashed border-gray-300 pt-4">
+                  <details className="group">
+                    <summary className="cursor-pointer text-sm text-gray-500 hover:text-gray-700 flex items-center">
+                      <AlertTriangle className="w-4 h-4 mr-2" />
+                      {isRealData ? 'Debug Information' : '⚠️ Using Sample Data (Real API data not available)'}
+                    </summary>
+                    <div className="mt-3 p-4 bg-gray-50 rounded-lg border border-gray-200 text-xs">
+                      <h5 className="font-semibold text-gray-900 mb-2">Data Source: {isRealData ? '✅ Live API' : '❌ Mock Generator'}</h5>
+                      <div className="space-y-1 text-gray-700 font-mono">
+                        <div>Agent: {agent.name}</div>
+                        <div>Molecule: {molecule}</div>
+                        <div>LLM Provider: {agentData.llm_provider || 'N/A'}</div>
+                        <div>Model Used: {agentData.model_used || 'N/A'}</div>
+                        <div>Processing Time: {agentData.processing_time_ms ? `${agentData.processing_time_ms}ms` : 'N/A'}</div>
+                      </div>
+                      {!isRealData && (
+                        <div className="mt-3 p-2 bg-yellow-50 border border-yellow-200 rounded text-yellow-800">
+                          <strong>Note:</strong> This agent did not return data from the API. Check console logs for errors.
+                        </div>
+                      )}
+                    </div>
+                  </details>
+                </div>
+              )}
             </div>
           </div>
 

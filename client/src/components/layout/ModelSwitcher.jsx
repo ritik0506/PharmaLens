@@ -8,23 +8,16 @@ const ModelSwitcher = () => {
   const models = [
     {
       id: 'ollama',
-      name: 'Llama 3 (Local)',
-      icon: '🦙',
-      description: 'Free, runs locally',
-      badge: 'Free'
+      name: 'Llama 3',
+      icon: '🔒',
+      description: 'HIPAA-compliant, local',
+      badge: 'Secure'
     },
     {
       id: 'openai',
-      name: 'GPT-4o',
-      icon: '🤖',
+      name: 'GPT-4',
+      icon: '☁️',
       description: 'OpenAI cloud model',
-      badge: 'Cloud'
-    },
-    {
-      id: 'anthropic',
-      name: 'Claude 3.5',
-      icon: '🧠',
-      description: 'Anthropic cloud model',
       badge: 'Cloud'
     }
   ];
@@ -100,7 +93,7 @@ const ModelSwitcher = () => {
                   </div>
                   <span
                     className={`px-2 py-1 text-xs font-medium rounded ${
-                      model.badge === 'Free'
+                      model.badge === 'Secure'
                         ? 'bg-green-900 text-green-300'
                         : 'bg-blue-900 text-blue-300'
                     }`}
@@ -112,7 +105,7 @@ const ModelSwitcher = () => {
             </div>
             
             <div className="border-t border-gray-700 px-4 py-3 text-xs text-gray-400">
-              <p>💡 <strong>Tip:</strong> Ollama is free and private. Cloud models require API keys in <code className="px-1 py-0.5 bg-gray-700 rounded">.env</code></p>
+              <p>💡 <strong>Tip:</strong> Secure (Llama 3) is HIPAA-compliant and free. Cloud (GPT-4) requires API key in <code className="px-1 py-0.5 bg-gray-700 rounded">.env</code></p>
             </div>
           </div>
         </>

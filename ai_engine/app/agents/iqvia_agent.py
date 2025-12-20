@@ -89,6 +89,45 @@ class IQVIAInsightsAgent:
         market_segments = self._analyze_segments(molecule)
         regional_breakdown = self._analyze_regional_markets(molecule)
         
+        # Try to get LLM-enhanced market strategy
+        llm_market_strategy = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = f"""Analyze the commercial opportunity for {molecule}:
+
+Therapy Area: {therapy_area}
+Global Market Size: ${iqvia_data['global_market_size_usd_bn']}B
+Market Share: {iqvia_data['market_share_percent']}%
+5-Year CAGR: {iqvia_data['five_year_cagr']}%
+Sales Trend: {iqvia_data['sales_trend']}
+
+Provide concise commercial strategy covering:
+1. Market entry opportunities
+2. Competitive positioning
+3. Revenue growth drivers
+
+Keep response under 150 words."""
+                
+                llm_market_strategy = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert pharmaceutical market analyst with IQVIA experience.",
+                    temperature=0.6,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_market_strategy_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
+        
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
@@ -140,6 +179,10 @@ class IQVIAInsightsAgent:
             
             # Data Sources
             "data_sources": ["IQVIA MIDAS", "IQVIA NSP", "Symphony Health", "Evaluate Pharma"],
+            
+            # LLM Enhancement
+            "llm_market_strategy": llm_market_strategy,
+            "llm_provider": llm_config.get("provider") if llm_market_strategy else None,
             
             # Metadata
             "agent": self.name,

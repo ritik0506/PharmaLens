@@ -151,12 +151,12 @@ const WatchAlertModule = () => {
   };
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-600">
         <div className="flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-            <Bell className="w-5 h-5 mr-2 text-blue-600" />
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+            <Bell className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
             Watch & Alert
             {unreadAlerts > 0 && (
               <span className="ml-2 px-2 py-0.5 bg-red-500 text-white text-xs font-bold rounded-full">
@@ -167,14 +167,14 @@ const WatchAlertModule = () => {
           <div className="flex items-center space-x-2">
             <button
               onClick={() => setShowSettings(!showSettings)}
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
               title="Settings"
             >
-              <Settings className="w-4 h-4 text-gray-500" />
+              <Settings className="w-4 h-4 text-gray-500 dark:text-gray-400" />
             </button>
             <button
               onClick={() => setShowAddModal(true)}
-              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors"
+              className="flex items-center space-x-1 px-3 py-1.5 bg-blue-600 dark:bg-blue-500 hover:bg-blue-700 dark:hover:bg-blue-600 text-white rounded-lg text-sm font-medium transition-colors"
             >
               <Plus className="w-4 h-4" />
               <span>Watch</span>
@@ -184,13 +184,13 @@ const WatchAlertModule = () => {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-gray-200">
+      <div className="flex border-b border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-900">
         <button
           onClick={() => setActiveTab('watchlist')}
           className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
             activeTab === 'watchlist'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-white dark:bg-slate-800'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           <Eye className="w-4 h-4 inline mr-1" />
@@ -200,8 +200,8 @@ const WatchAlertModule = () => {
           onClick={() => setActiveTab('alerts')}
           className={`flex-1 py-3 text-sm font-medium text-center transition-colors ${
             activeTab === 'alerts'
-              ? 'text-blue-600 border-b-2 border-blue-600'
-              : 'text-gray-500 hover:text-gray-700'
+              ? 'text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 dark:border-blue-400 bg-white dark:bg-slate-800'
+              : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300'
           }`}
         >
           <AlertCircle className="w-4 h-4 inline mr-1" />
@@ -220,12 +220,12 @@ const WatchAlertModule = () => {
         {activeTab === 'watchlist' && (
           <div className="space-y-3">
             {watchlist.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
                 <Eye className="w-8 h-8 mx-auto mb-2 opacity-50" />
                 <p className="text-sm">No molecules in watchlist</p>
                 <button
                   onClick={() => setShowAddModal(true)}
-                  className="mt-2 text-blue-600 hover:text-blue-700 text-sm font-medium"
+                  className="mt-2 text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 text-sm font-medium"
                 >
                   Add your first molecule
                 </button>
@@ -234,15 +234,15 @@ const WatchAlertModule = () => {
               watchlist.map(item => (
                 <div 
                   key={item.id}
-                  className="flex items-center justify-between p-3 bg-gray-50 hover:bg-gray-100 rounded-lg transition-colors"
+                  className="flex items-center justify-between p-3 bg-gray-50 dark:bg-slate-700 hover:bg-gray-100 dark:hover:bg-slate-600 rounded-lg transition-colors"
                 >
                   <div className="flex items-center space-x-3">
                     <div className={`w-2 h-2 rounded-full ${
                       item.status === 'active' ? 'bg-green-500' : 'bg-gray-400'
                     }`} />
                     <div>
-                      <div className="font-medium text-gray-900">{item.molecule}</div>
-                      <div className="text-xs text-gray-500 flex items-center space-x-2">
+                      <div className="font-medium text-gray-900 dark:text-white">{item.molecule}</div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-2">
                         <span>Added {item.addedDate}</span>
                         <span>•</span>
                         <span className="flex items-center">

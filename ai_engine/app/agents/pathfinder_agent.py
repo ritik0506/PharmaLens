@@ -18,6 +18,7 @@ from typing import Dict, Any, List, Optional
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -91,15 +92,18 @@ class MolecularPathfinderAgent:
             agent=self.name
         )
         
+        # Get drug-specific data
+        pathfinder_data = DrugDataGenerator.get_pathfinder_data(molecule)
+        
         # Simulate knowledge graph query
         await asyncio.sleep(random.uniform(0.8, 1.5))
         
         # Query knowledge graph
-        primary_targets = self._find_primary_targets(molecule)
-        pathways = self._find_pathways(primary_targets)
-        second_degree = self._find_second_degree_connections(primary_targets)
+        primary_targets = self._find_primary_targets(molecule, pathfinder_data)
+        pathways = self._find_pathways(primary_targets, pathfinder_data)
+        second_degree = self._find_second_degree_connections(primary_targets, pathfinder_data)
         disease_associations = self._find_disease_associations(primary_targets, pathways)
-        repurposing_opportunities = self._identify_repurposing(second_degree, disease_associations)
+        repurposing_opportunities = self._identify_repurposing(second_degree, disease_associations, pathfinder_data)
         
         # Build graph visualization data
         graph_data = self._build_graph_data(
@@ -165,7 +169,7 @@ class MolecularPathfinderAgent:
         
         return result
     
-    def _find_primary_targets(self, molecule: str) -> List[Dict[str, Any]]:
+    def _find_primary_targets(self, molecule: str, pathfinder_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Find primary drug targets."""
         num_targets = random.randint(2, 5)
         targets = random.sample(self.knowledge_graph["proteins"], k=num_targets)
@@ -184,9 +188,9 @@ class MolecularPathfinderAgent:
             for t in targets
         ]
     
-    def _find_pathways(self, targets: List[Dict]) -> List[Dict[str, Any]]:
+    def _find_pathways(self, targets: List[Dict], pathfinder_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """Find biological pathways associated with targets."""
-        num_pathways = random.randint(3, 6)
+        num_pathways = pathfinder_data.get("num_pathways", 4)
         pathways = random.sample(self.knowledge_graph["pathways"], k=num_pathways)
         
         return [
@@ -202,17 +206,19 @@ class MolecularPathfinderAgent:
             for p in pathways
         ]
     
-    def _find_second_degree_connections(self, targets: List[Dict]) -> List[Dict[str, Any]]:
+    def _find_second_degree_connections(self, targets: List[Dict], pathfinder_data: Dict[str, Any]) -> List[Dict[str, Any]]:
         """
         Find second-degree connections (Drug → Target A → Protein B → Disease).
         This is crucial for drug repurposing discovery.
         """
         connections = []
         
+        num_indirect = pathfinder_data.get("num_indirect_targets", 10)
+        connections_per_target = max(2, num_indirect // len(targets[:3]))
+        
         for target in targets[:3]:  # Top 3 targets
             # Find proteins that interact with the target
-            num_connections = random.randint(2, 5)
-            interacting_proteins = random.sample(self.knowledge_graph["proteins"], k=num_connections)
+            interacting_proteins = random.sample(self.knowledge_graph["proteins"], k=connections_per_target)
             
             for protein in interacting_proteins:
                 if protein["id"] != target.get("uniprot_id"):
@@ -267,7 +273,8 @@ class MolecularPathfinderAgent:
     def _identify_repurposing(
         self, 
         second_degree: List[Dict],
-        disease_associations: List[Dict]
+        disease_associations: List[Dict],
+        pathfinder_data: Dict[str, Any]
     ) -> List[Dict[str, Any]]:
         """Identify drug repurposing opportunities."""
         opportunities = []
@@ -275,7 +282,8 @@ class MolecularPathfinderAgent:
         # Find novel disease targets with high scores
         novel_diseases = [d for d in disease_associations if d.get("is_novel")]
         
-        for disease in novel_diseases[:3]:
+        num_opportunities = pathfinder_data.get("num_repurposing_opportunities", 3)
+        for disease in novel_diseases[:num_opportunities]:
             # Find supporting second-degree connections
             supporting_connections = [
                 c for c in second_degree 

@@ -48,17 +48,16 @@ structlog.configure(
 logger = structlog.get_logger(__name__)
 
 # Import agents
-from app.agents.market_agent import MarketAgent
 from app.agents.clinical_agent import ClinicalAgent
 from app.agents.patent_agent import PatentAgent
 from app.agents.vision_agent import VisionAgent
 from app.agents.validation_agent import ValidationAgent
-from app.agents.kol_finder_agent import KOLFinderAgent
-from app.agents.pathfinder_agent import MolecularPathfinderAgent
 from app.agents.iqvia_agent import IQVIAInsightsAgent
 from app.agents.exim_agent import EXIMAgent
 from app.agents.web_intelligence_agent import WebIntelligenceAgent
 from app.agents.internal_knowledge_agent import InternalKnowledgeAgent
+from app.agents.regulatory_agent import RegulatoryAgent
+from app.agents.patient_sentiment_agent import PatientSentimentAgent
 from app.agents.orchestrator import MasterOrchestrator
 from app.core.config import settings
 from app.core.privacy_toggle import PrivacyManager
@@ -75,7 +74,7 @@ class AnalyzeRequest(BaseModel):
     provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
     request_id: str = Field(..., description="Unique request identifier")
     agents: Optional[List[str]] = Field(
-        default=["clinical", "patent", "market", "vision"],
+        default=["clinical", "patent", "iqvia", "vision"],
         description="List of agents to engage"
     )
 
@@ -87,21 +86,6 @@ class OrchestratedRequest(BaseModel):
     disease: Optional[str] = Field(None, description="Target disease if applicable")
     mode: str = Field(default="auto", pattern="^(secure|cloud|auto)$", description="Processing mode: auto (detect best), secure (force local), cloud (any cloud provider)")
     provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
-    request_id: str = Field(..., description="Unique request identifier")
-
-
-class KOLRequest(BaseModel):
-    """Request for Key Opinion Leader search"""
-    molecule: str = Field(..., description="Molecule name")
-    disease: str = Field(..., description="Disease indication")
-    request_id: str = Field(..., description="Unique request identifier")
-
-
-class PathwayRequest(BaseModel):
-    """Request for molecular pathway analysis"""
-    molecule: str = Field(..., description="Source molecule")
-    disease: str = Field(..., description="Target disease")
-    max_hops: int = Field(default=3, ge=1, le=5, description="Maximum path length")
     request_id: str = Field(..., description="Unique request identifier")
 
 
@@ -161,16 +145,15 @@ async def lifespan(app: FastAPI):
                 local=settings.LOCAL_ENABLED)
     
     # Initialize core agents
-    app.state.market_agent = MarketAgent()
     app.state.clinical_agent = ClinicalAgent()
     app.state.patent_agent = PatentAgent()
     app.state.vision_agent = VisionAgent()
     app.state.privacy_manager = PrivacyManager()
     
-    # Initialize new agents
+    # Initialize validation and new agents
     app.state.validation_agent = ValidationAgent()
-    app.state.kol_finder = KOLFinderAgent()
-    app.state.pathfinder = MolecularPathfinderAgent()
+    app.state.regulatory_agent = RegulatoryAgent()
+    app.state.patient_sentiment_agent = PatientSentimentAgent()
     
     # Initialize mandatory domain expert agents
     app.state.exim_agent = EXIMAgent()
@@ -181,7 +164,7 @@ async def lifespan(app: FastAPI):
     # Initialize orchestrator (creates its own agent instances)
     app.state.orchestrator = MasterOrchestrator()
     
-    logger.info("✅ All agents initialized successfully (12 agents total)")
+    logger.info("✅ All agents initialized successfully (10 core agents + orchestrator)")
     
     yield
     
@@ -328,15 +311,16 @@ async def analyze_compound(request: AnalyzeRequest):
                 "duration_ms": patent_result.get("processing_time_ms", 0)
             })
         
-        if "market" in request.agents:
-            market_result = await app.state.market_agent.calculate_roi(
-                request.molecule
+        if "iqvia" in request.agents:
+            iqvia_result = await app.state.iqvia_agent.analyze(
+                request.molecule,
+                llm_config
             )
-            results["market"] = market_result
+            results["iqvia"] = iqvia_result
             results["agents_executed"].append({
-                "name": "MarketAgent",
+                "name": "IQVIAInsightsAgent",
                 "status": "completed", 
-                "duration_ms": market_result.get("processing_time_ms", 0)
+                "duration_ms": iqvia_result.get("processing_time_ms", 0)
             })
         
         if "vision" in request.agents:
@@ -378,22 +362,29 @@ async def analyze_compound(request: AnalyzeRequest):
         )
 
 
-@app.post("/api/agents/market/roi")
-async def get_roi_calculation(request: ROIRequest):
+@app.post("/api/agents/iqvia/market-intelligence")
+async def get_market_intelligence(request: ROIRequest):
     """
-    Dedicated ROI calculation endpoint.
+    IQVIA Market Intelligence endpoint.
     
-    Returns detailed financial projections for drug repurposing.
+    Returns detailed market analysis and commercial projections.
     """
     logger.info(
-        "roi_calculation_requested",
+        "market_intelligence_requested",
         molecule=request.molecule,
         request_id=request.request_id
     )
     
     try:
-        market_agent: MarketAgent = app.state.market_agent
-        result = await market_agent.calculate_roi(request.molecule)
+        iqvia_agent = app.state.iqvia_agent
+        
+        # Get LLM config
+        llm_config = app.state.privacy_manager.get_llm_config(
+            mode="auto",
+            provider=None
+        )
+        
+        result = await iqvia_agent.analyze(request.molecule, llm_config)
         
         return {
             "success": True,
@@ -422,13 +413,17 @@ async def get_agents_status():
         "agents": [
             {"name": "ClinicalAgent", "status": "active", "version": "1.0.0"},
             {"name": "PatentAgent", "status": "active", "version": "1.0.0"},
-            {"name": "MarketAgent", "status": "active", "version": "1.0.0"},
+            {"name": "IQVIAInsightsAgent", "status": "active", "version": "1.0.0"},
+            {"name": "EXIMAgent", "status": "active", "version": "1.0.0"},
             {"name": "VisionAgent", "status": "active", "version": "1.0.0"},
+            {"name": "WebIntelligenceAgent", "status": "active", "version": "1.0.0"},
+            {"name": "InternalKnowledgeAgent", "status": "active", "version": "1.0.0"},
+            {"name": "RegulatoryAgent", "status": "active", "version": "1.0.0"},
+            {"name": "PatientSentimentAgent", "status": "active", "version": "1.0.0"},
             {"name": "ValidationAgent", "status": "active", "version": "1.0.0"},
-            {"name": "KOLFinderAgent", "status": "active", "version": "1.0.0"},
-            {"name": "MolecularPathfinderAgent", "status": "active", "version": "1.0.0"},
             {"name": "MasterOrchestrator", "status": "active", "version": "1.0.0"}
         ],
+        "total_agents": 10,
         "orchestrator": "active",
         "knowledge_graph": "connected"
     }
@@ -508,75 +503,6 @@ async def validate_findings(request: dict):
     except Exception as e:
         logger.error("validation_failed", error=str(e))
         raise HTTPException(status_code=500, detail=f"Validation failed: {str(e)}")
-
-
-@app.post("/api/agents/kol")
-async def find_kol(request: KOLRequest):
-    """
-    Key Opinion Leader search endpoint.
-    Finds top researchers and labs for a molecule-disease pair.
-    """
-    logger.info(
-        "kol_search_requested",
-        molecule=request.molecule,
-        disease=request.disease,
-        request_id=request.request_id
-    )
-    
-    try:
-        kol_finder: KOLFinderAgent = app.state.kol_finder
-        privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("auto")
-        
-        result = await kol_finder.analyze(
-            molecule=request.molecule,
-            llm_config=llm_config
-        )
-        
-        return {
-            "success": True,
-            "request_id": request.request_id,
-            "data": result
-        }
-        
-    except Exception as e:
-        logger.error("kol_search_failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"KOL search failed: {str(e)}")
-
-
-@app.post("/api/agents/pathways")
-async def find_pathways(request: PathwayRequest):
-    """
-    Molecular pathway analysis using GraphRAG.
-    Finds biological connections between molecule and disease.
-    """
-    logger.info(
-        "pathway_analysis_requested",
-        molecule=request.molecule,
-        disease=request.disease,
-        max_hops=request.max_hops,
-        request_id=request.request_id
-    )
-    
-    try:
-        pathfinder: MolecularPathfinderAgent = app.state.pathfinder
-        privacy_manager: PrivacyManager = app.state.privacy_manager
-        llm_config = privacy_manager.get_llm_config("auto")
-        
-        result = await pathfinder.analyze(
-            molecule=request.molecule,
-            llm_config=llm_config
-        )
-        
-        return {
-            "success": True,
-            "request_id": request.request_id,
-            "data": result
-        }
-        
-    except Exception as e:
-        logger.error("pathway_analysis_failed", error=str(e))
-        raise HTTPException(status_code=500, detail=f"Pathway analysis failed: {str(e)}")
 
 
 # ======================

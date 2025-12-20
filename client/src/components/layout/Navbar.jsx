@@ -1,13 +1,14 @@
 /**
  * PharmaLens Navbar Component
  * ============================
- * Top navigation bar with Privacy Mode toggle switch.
+ * Top navigation bar with AI Model toggle and Theme switch.
  * 
  * Features:
  * - Logo and branding
- * - Privacy toggle (Secure/Cloud mode)
- * - Visual mode indicator
- * - Navigation links
+ * - Privacy toggle: Secure (Llama 3) ↔ Cloud (GPT-4)
+ * - Theme toggle: Light ↔ Dark mode
+ * - Visual status indicators
+ * - Mobile responsive
  */
 
 import { useState, useContext } from 'react';
@@ -19,12 +20,16 @@ import {
   X, 
   Beaker, 
   Settings,
-  Bell
+  Bell,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { ResearchContext } from '../../context/ResearchContext';
+import { useTheme } from '../../context/ThemeContext';
 
 const Navbar = () => {
   const { privacyMode, setPrivacyMode } = useContext(ResearchContext);
+  const { mode, toggle } = useTheme();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   // Toggle between secure (local) and cloud modes
@@ -36,7 +41,7 @@ const Navbar = () => {
   const isSecureMode = privacyMode === 'secure';
   
   return (
-    <nav className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+    <nav className="bg-white dark:bg-[#071018] shadow-sm border-b border-gray-200 dark:border-white/10 sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           {/* Logo & Brand */}
@@ -45,18 +50,65 @@ const Navbar = () => {
               <Beaker className="w-6 h-6 text-white" />
             </div>
             <div>
-              <span className="text-xl font-bold text-gray-900">PharmaLens</span>
-              <span className="hidden sm:block text-xs text-gray-500">Drug Repurposing AI</span>
+              <span className="text-xl font-bold text-gray-900 dark:text-white">PharmaLens</span>
+              <span className="hidden sm:block text-xs text-gray-500 dark:text-gray-400">Drug Repurposing AI</span>
             </div>
           </Link>
           
           {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-6">
+          <div className="hidden md:flex items-center space-x-4">
+            {/* Theme Toggle - Enhanced Day/Night Switch */}
+            <button
+              onClick={toggle}
+              className="relative w-16 h-8 rounded-full transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-offset-2 dark:ring-offset-slate-900 focus:ring-indigo-500 overflow-hidden group shadow-lg hover:shadow-xl transform hover:scale-105"
+              style={{
+                background: mode === 'dark' 
+                  ? 'linear-gradient(135deg, #1e293b 0%, #0f172a 50%, #020617 100%)' 
+                  : 'linear-gradient(135deg, #60a5fa 0%, #3b82f6 50%, #2563eb 100%)'
+              }}
+              aria-label="Toggle theme"
+            >
+              {/* Sky background effect with animation */}
+              <div className="absolute inset-0 transition-all duration-500">
+                {mode === 'dark' ? (
+                  // Night sky with stars
+                  <div className="absolute inset-0 bg-gradient-to-b from-slate-800 via-slate-900 to-slate-950">
+                    <div className="absolute top-1 left-2 w-1 h-1 bg-white rounded-full opacity-80 animate-pulse"></div>
+                    <div className="absolute top-3 left-6 w-0.5 h-0.5 bg-white rounded-full opacity-60 animate-pulse" style={{animationDelay: '0.3s'}}></div>
+                    <div className="absolute top-2 left-10 w-1 h-1 bg-white rounded-full opacity-70 animate-pulse" style={{animationDelay: '0.6s'}}></div>
+                    <div className="absolute top-4 left-4 w-0.5 h-0.5 bg-blue-200 rounded-full opacity-50 animate-pulse" style={{animationDelay: '0.9s'}}></div>
+                    <div className="absolute top-1 left-8 w-0.5 h-0.5 bg-purple-200 rounded-full opacity-40 animate-pulse" style={{animationDelay: '1.2s'}}></div>
+                  </div>
+                ) : (
+                  // Day sky with clouds
+                  <div className="absolute inset-0 bg-gradient-to-b from-sky-300 via-blue-400 to-blue-500">
+                    <div className="absolute top-2 left-4 w-3 h-1 bg-white/30 rounded-full blur-[1px]"></div>
+                    <div className="absolute top-4 left-7 w-2 h-1 bg-white/20 rounded-full blur-[1px]"></div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Toggle Circle (Sun/Moon) with glow effect */}
+              <span
+                className={`absolute top-1 w-6 h-6 rounded-full shadow-lg transform transition-all duration-500 flex items-center justify-center ${
+                  mode === 'dark' 
+                    ? 'translate-x-1 bg-gradient-to-br from-slate-600 to-slate-800 shadow-slate-900' 
+                    : 'translate-x-9 bg-gradient-to-br from-yellow-300 to-orange-400 shadow-yellow-500/50'
+                }`}
+              >
+                {mode === 'dark' ? (
+                  <Moon className="w-4 h-4 text-slate-100 drop-shadow-lg" />
+                ) : (
+                  <Sun className="w-4 h-4 text-white drop-shadow-lg animate-spin-slow" />
+                )}
+              </span>
+            </button>
+            
             {/* Privacy Mode Toggle */}
-            <div className="flex items-center space-x-3 bg-gray-100 rounded-full px-4 py-2">
+            <div className="flex items-center space-x-3 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 border border-gray-200 dark:border-gray-700">
               {/* Mode Label */}
               <span className={`text-sm font-medium transition-colors ${
-                isSecureMode ? 'text-green-600' : 'text-gray-400'
+                isSecureMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
               }`}>
                 <Shield className="w-4 h-4 inline mr-1" />
                 Secure
@@ -83,20 +135,20 @@ const Navbar = () => {
               
               {/* Cloud Label */}
               <span className={`text-sm font-medium transition-colors ${
-                !isSecureMode ? 'text-blue-600' : 'text-gray-400'
+                !isSecureMode ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
               }`}>
-                <Cloud className="w-4 h-4 inline mr-1" />
                 Cloud
+                <Cloud className="w-4 h-4 inline ml-1" />
               </span>
             </div>
             
-            {/* Mode Status Badge */}
-            <div className={`px-3 py-1 rounded-full text-xs font-semibold ${
+            {/* Mode Status Badge - Shows Active LLM */}
+            <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${
               isSecureMode 
-                ? 'bg-green-100 text-green-700' 
-                : 'bg-blue-100 text-blue-700'
+                ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' 
+                : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
             }`}>
-              {isSecureMode ? '🔒 HIPAA Compliant' : '☁️ GPT-4 Enabled'}
+              {isSecureMode ? '🔒 Llama 3 (Secure)' : '☁️ GPT-4 (Cloud)'}
             </div>
             
             {/* Notification Bell */}
@@ -121,11 +173,11 @@ const Navbar = () => {
         
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
-          <div className="md:hidden py-4 border-t border-gray-200">
+          <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#071018]">
             {/* Mobile Privacy Toggle */}
             <div className="flex flex-col space-y-4 px-2">
               <div className="flex items-center justify-between">
-                <span className="text-sm font-medium text-gray-700">Privacy Mode</span>
+                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Model</span>
                 <button
                   onClick={handleToggle}
                   className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${
@@ -140,13 +192,15 @@ const Navbar = () => {
                 </button>
               </div>
               
-              <div className={`text-center py-2 rounded-lg ${
-                isSecureMode ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+              <div className={`text-center py-2 rounded-lg text-sm font-medium ${
+                isSecureMode 
+                  ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
+                  : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
               }`}>
                 {isSecureMode ? (
-                  <span><Shield className="w-4 h-4 inline mr-1" /> Local Secure Mode</span>
+                  <span><Shield className="w-4 h-4 inline mr-1" /> Llama 3 (Secure)</span>
                 ) : (
-                  <span><Cloud className="w-4 h-4 inline mr-1" /> Cloud Mode (GPT-4)</span>
+                  <span><Cloud className="w-4 h-4 inline mr-1" /> GPT-4 (Cloud)</span>
                 )}
               </div>
             </div>

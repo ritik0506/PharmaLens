@@ -18,6 +18,7 @@ from typing import Dict, Any, List
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -36,6 +37,7 @@ class WebIntelligenceAgent:
     def __init__(self):
         self.name = "WebIntelligenceAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         
         # Mock data sources
         self.sources = [
@@ -65,15 +67,56 @@ class WebIntelligenceAgent:
             agent=self.name
         )
         
+        # Get drug-specific data
+        web_data = DrugDataGenerator.get_web_intelligence_data(molecule)
+        
         # Simulate web crawling
         await asyncio.sleep(random.uniform(0.8, 1.5))
         
         # Gather intelligence from multiple sources
-        pubmed_results = self._search_pubmed(molecule)
-        news_signals = self._monitor_news(molecule)
-        regulatory_updates = self._check_regulatory(molecule)
+        pubmed_results = self._search_pubmed(molecule, web_data)
+        news_signals = self._monitor_news(molecule, web_data)
+        regulatory_updates = self._check_regulatory(molecule, web_data)
         vision_insights = self._analyze_charts(molecule)
         social_signals = self._monitor_social(molecule)
+        
+        # Try to get LLM-enhanced intelligence synthesis
+        llm_intelligence = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = f"""Synthesize web intelligence for {molecule}:
+
+Recent Publications: {len(pubmed_results['recent_papers'])} new papers
+News Signals: {len(news_signals['articles'])} industry articles
+Regulatory Status: {regulatory_updates['risk_level']}
+Social Sentiment: {social_signals.get('sentiment_score', 0.5)}
+
+Provide concise intelligence summary covering:
+1. Key trends and developments
+2. Emerging opportunities or threats
+3. Actionable insights
+
+Keep response under 150 words."""
+                
+                llm_intelligence = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert pharmaceutical intelligence analyst.",
+                    temperature=0.7,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_intelligence_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
         
         result = {
             "molecule": molecule,
@@ -105,6 +148,10 @@ class WebIntelligenceAgent:
             # Alert Indicators
             "alerts": self._generate_alerts(molecule, news_signals, regulatory_updates),
             
+            # LLM Enhancement
+            "llm_intelligence": llm_intelligence,
+            "llm_provider": llm_config.get("provider") if llm_intelligence else None,
+            
             # Data Sources Used
             "data_sources": self.sources,
             
@@ -123,7 +170,7 @@ class WebIntelligenceAgent:
         
         return result
     
-    def _search_pubmed(self, molecule: str) -> Dict[str, Any]:
+    def _search_pubmed(self, molecule: str, web_data: Dict[str, Any]) -> Dict[str, Any]:
         """Search PubMed for recent publications."""
         # Generate mock recent papers
         paper_titles = [
@@ -144,7 +191,7 @@ class WebIntelligenceAgent:
         ]
         
         recent_papers = []
-        num_papers = random.randint(3, 8)
+        num_papers = web_data["num_recent_papers"]
         
         for i in range(num_papers):
             days_ago = random.randint(1, 30)
@@ -165,9 +212,9 @@ class WebIntelligenceAgent:
             })
         
         return {
-            "total_publications": random.randint(500, 5000),
-            "publications_last_year": random.randint(50, 300),
-            "publications_last_30_days": len(recent_papers),
+            "total_publications": web_data["total_publications"],
+            "publications_last_year": web_data["publications_last_year"],
+            "publications_last_30_days": web_data["publications_last_30_days"],
             "recent_papers": recent_papers,
             "trending_topics": [
                 f"{molecule} + immunotherapy",
@@ -175,10 +222,10 @@ class WebIntelligenceAgent:
                 f"{molecule} resistance mechanisms",
                 f"{molecule} combination strategies"
             ][:random.randint(2, 4)],
-            "publication_trend": random.choice(["Increasing ↑", "Stable →", "Decreasing ↓"])
+            "publication_trend": web_data["publication_trend"]
         }
     
-    def _monitor_news(self, molecule: str) -> Dict[str, Any]:
+    def _monitor_news(self, molecule: str, web_data: Dict[str, Any]) -> Dict[str, Any]:
         """Monitor news sources for industry signals."""
         news_items = []
         
@@ -193,7 +240,7 @@ class WebIntelligenceAgent:
             {"type": "Label Expansion", "headline": f"New indication approved for {molecule}"}
         ]
         
-        num_news = random.randint(2, 6)
+        num_news = min(web_data["num_news_items"], len(news_templates))
         selected = random.sample(news_templates, num_news)
         
         for item in selected:
@@ -227,7 +274,7 @@ class WebIntelligenceAgent:
             ]
         }
     
-    def _check_regulatory(self, molecule: str) -> Dict[str, Any]:
+    def _check_regulatory(self, molecule: str, web_data: Dict[str, Any]) -> Dict[str, Any]:
         """Check regulatory updates and guidelines."""
         updates = []
         

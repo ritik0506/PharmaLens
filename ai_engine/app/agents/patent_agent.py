@@ -72,6 +72,44 @@ class PatentAgent:
         else:
             expiration_date = datetime.now() - timedelta(days=365)  # Already expired
         
+        # Try to get LLM-enhanced patent strategy
+        llm_strategy = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = f"""Analyze the patent landscape for {molecule}:
+
+Active Patents: {patent_data['active_patents']}
+FTO Risk: {patent_data['fto_risk_level']}
+Key Holders: {', '.join(patent_data['key_patent_holders'])}
+Patent Cliff: {patent_data['patent_cliff_years']} years
+
+Provide concise IP strategy recommendations focusing on:
+1. Freedom to operate assessment
+2. Patent filing opportunities
+3. Licensing strategies
+
+Keep response under 150 words."""
+                
+                llm_strategy = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert IP attorney specializing in pharmaceutical patents.",
+                    temperature=0.6,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_patent_strategy_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
+        
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
@@ -110,6 +148,10 @@ class PatentAgent:
             
             # Recommendations
             "strategy_recommendations": self._generate_recommendations(),
+            
+            # LLM Enhancement
+            "llm_strategy": llm_strategy,
+            "llm_provider": llm_config.get("provider") if llm_strategy else None,
             
             # Metadata
             "agent": self.name,

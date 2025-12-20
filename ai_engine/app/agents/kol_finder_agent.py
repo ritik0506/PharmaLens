@@ -18,6 +18,7 @@ from typing import Dict, Any, List
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -90,11 +91,14 @@ class KOLFinderAgent:
             agent=self.name
         )
         
+        # Get drug-specific data
+        kol_data = DrugDataGenerator.get_kol_data(molecule)
+        
         # Simulate API/database query
         await asyncio.sleep(random.uniform(0.5, 1.2))
         
         # Determine relevant therapeutic areas
-        therapeutic_areas = self._infer_therapeutic_areas(molecule)
+        therapeutic_areas = [kol_data["therapeutic_area"]]
         
         # Find KOLs
         academic_kols = self._find_academic_kols(therapeutic_areas)

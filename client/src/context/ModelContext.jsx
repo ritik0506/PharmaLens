@@ -25,24 +25,17 @@ export const ModelProvider = ({ children }) => {
     const configs = {
       ollama: {
         provider: 'ollama',
-        displayName: 'Llama 3 (Local)',
-        description: 'Free, runs locally on your machine',
-        icon: '🦙',
+        displayName: 'Llama 3 (Secure)',
+        description: 'HIPAA-compliant, runs locally',
+        icon: '🔒',
         cost: 'Free'
       },
       openai: {
         provider: 'openai',
-        displayName: 'GPT-4o (Cloud)',
+        displayName: 'GPT-4 (Cloud)',
         description: 'OpenAI\'s most advanced model',
-        icon: '🤖',
+        icon: '☁️',
         cost: '$0.01-0.03/1K tokens'
-      },
-      anthropic: {
-        provider: 'anthropic',
-        displayName: 'Claude 3.5 Sonnet',
-        description: 'Anthropic\'s latest model',
-        icon: '🧠',
-        cost: '$0.003-0.015/1K tokens'
       }
     };
 
@@ -53,7 +46,7 @@ export const ModelProvider = ({ children }) => {
     selectedModel,
     setSelectedModel,
     modelConfig: getModelConfig(),
-    availableModels: ['ollama', 'openai', 'anthropic']
+    availableModels: ['ollama', 'openai']
   };
 
   return (

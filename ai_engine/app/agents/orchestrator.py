@@ -17,15 +17,14 @@ import structlog
 
 from .clinical_agent import ClinicalAgent
 from .patent_agent import PatentAgent
-from .market_agent import MarketAgent
 from .iqvia_agent import IQVIAInsightsAgent
 from .exim_agent import EXIMAgent
 from .vision_agent import VisionAgent
 from .validation_agent import ValidationAgent
-from .kol_finder_agent import KOLFinderAgent
-from .pathfinder_agent import MolecularPathfinderAgent
 from .web_intelligence_agent import WebIntelligenceAgent
 from .internal_knowledge_agent import InternalKnowledgeAgent
+from .regulatory_agent import RegulatoryAgent
+from .patient_sentiment_agent import PatientSentimentAgent
 
 logger = structlog.get_logger(__name__)
 
@@ -50,15 +49,14 @@ class MasterOrchestrator:
         self.agents = {
             "clinical": ClinicalAgent(),
             "patent": PatentAgent(),
-            "market": MarketAgent(),
             "iqvia": IQVIAInsightsAgent(),
             "exim": EXIMAgent(),
             "vision": VisionAgent(),
             "validation": ValidationAgent(),
-            "kol": KOLFinderAgent(),
-            "pathfinder": MolecularPathfinderAgent(),
             "web_intelligence": WebIntelligenceAgent(),
-            "internal_knowledge": InternalKnowledgeAgent()
+            "internal_knowledge": InternalKnowledgeAgent(),
+            "regulatory": RegulatoryAgent(),
+            "patient_sentiment": PatientSentimentAgent()
         }
         
         logger.info(f"Initialized {self.name} v{self.version}", 
@@ -190,13 +188,13 @@ class MasterOrchestrator:
                 "description": f"Analyze patent landscape for {molecule}"
             })
         
-        # Market analysis task
+        # Market analysis via IQVIA
         if any(kw in query_lower for kw in ['market', 'roi', 'revenue', 'investment', 'commercial']):
             sub_tasks.append({
-                "type": "market_analysis",
-                "agent": "market",
+                "type": "iqvia_analysis",
+                "agent": "iqvia",
                 "priority": 1,
-                "description": f"Calculate ROI and market potential for {molecule}"
+                "description": f"IQVIA market intelligence for {molecule}"
             })
         
         # Vision/structural analysis task
@@ -208,22 +206,22 @@ class MasterOrchestrator:
                 "description": f"Analyze molecular structure of {molecule}"
             })
         
-        # KOL finder task
-        if any(kw in query_lower for kw in ['researcher', 'expert', 'kol', 'opinion leader', 'lab']):
+        # Regulatory task
+        if any(kw in query_lower for kw in ['regulatory', 'fda', 'ema', 'approval', 'compliance', 'risk']):
             sub_tasks.append({
-                "type": "kol_identification",
-                "agent": "kol",
-                "priority": 4,
-                "description": f"Identify key opinion leaders for {molecule}"
+                "type": "regulatory_analysis",
+                "agent": "regulatory",
+                "priority": 1,
+                "description": f"FDA/EMA regulatory risk assessment for {molecule}"
             })
         
-        # Pathfinder task
-        if any(kw in query_lower for kw in ['pathway', 'target', 'protein', 'interaction', 'graph']):
+        # Patient Sentiment task
+        if any(kw in query_lower for kw in ['patient', 'sentiment', 'feedback', 'unmet', 'needs', 'satisfaction']):
             sub_tasks.append({
-                "type": "pathway_analysis",
-                "agent": "pathfinder",
+                "type": "patient_sentiment",
+                "agent": "patient_sentiment",
                 "priority": 2,
-                "description": f"Map biological pathways for {molecule}"
+                "description": f"Patient sentiment and unmet needs analysis for {molecule}"
             })
         
         # IQVIA/Market Intelligence task
@@ -245,7 +243,7 @@ class MasterOrchestrator:
             })
         
         # Web Intelligence task
-        if any(kw in query_lower for kw in ['news', 'web', 'pubmed', 'publication', 'regulatory', 'fda']):
+        if any(kw in query_lower for kw in ['news', 'web', 'pubmed', 'publication', 'articles']):
             sub_tasks.append({
                 "type": "web_intelligence",
                 "agent": "web_intelligence",
@@ -270,6 +268,10 @@ class MasterOrchestrator:
                 {"type": "iqvia_analysis", "agent": "iqvia", "priority": 1, "description": f"IQVIA market intelligence for {molecule}"},
                 {"type": "exim_analysis", "agent": "exim", "priority": 2, "description": f"EXIM trade analysis for {molecule}"},
                 {"type": "structural_analysis", "agent": "vision", "priority": 3, "description": f"Structural analysis for {molecule}"},
+                {"type": "web_intelligence", "agent": "web_intelligence", "priority": 3, "description": f"Web intelligence for {molecule}"},
+                {"type": "internal_knowledge", "agent": "internal_knowledge", "priority": 4, "description": f"Internal knowledge for {molecule}"},
+                {"type": "regulatory_analysis", "agent": "regulatory", "priority": 1, "description": f"Regulatory assessment for {molecule}"},
+                {"type": "patient_sentiment", "agent": "patient_sentiment", "priority": 2, "description": f"Patient sentiment for {molecule}"},
             ]
         
         # Sort by priority
@@ -309,11 +311,8 @@ class MasterOrchestrator:
                 
                 agent = self.agents[agent_name]
                 
-                # Call appropriate method
-                if agent_name == "market":
-                    result = await agent.calculate_roi(molecule)
-                else:
-                    result = await agent.analyze(molecule, llm_config)
+                # All agents use analyze() method
+                result = await agent.analyze(molecule, llm_config)
                 
                 logger.info(f"agent_completed", agent=agent_name, request_id=request_id)
                 return (agent_name, result)
@@ -381,15 +380,33 @@ class MasterOrchestrator:
                     f"{patent['blocking_patents']} blocking patents identified"
                 )
         
-        # Extract market findings
-        if "market" in results and "error" not in results["market"]:
-            market = results["market"]
+        # Extract IQVIA market findings
+        if "iqvia" in results and "error" not in results["iqvia"]:
+            iqvia = results["iqvia"]
             summary["key_findings"].append(
-                f"Projected ROI: {market.get('roi_percentage', 0)}% | Market Size: ${market.get('market_size_billions', 0)}B"
+                f"Market Size: ${iqvia.get('global_market_size_usd_bn', 0)}B | CAGR: {iqvia.get('cagr_percent', 0)}%"
             )
-            summary["recommended_actions"].append(
-                f"Investment recommendation: {market.get('recommendation', 'REVIEW')}"
+        
+        # Extract regulatory findings
+        if "regulatory" in results and "error" not in results["regulatory"]:
+            regulatory = results["regulatory"]
+            summary["key_findings"].append(
+                f"Regulatory Risk: {regulatory.get('risk_level', 'Unknown')} | FDA Approval: {regulatory.get('fda_approval_probability', 0)*100}%"
             )
+            if regulatory.get("risk_score", 0) > 7.0:
+                summary["risks"].append(f"High regulatory risk score: {regulatory['risk_score']}/10")
+        
+        # Extract patient sentiment findings
+        if "patient_sentiment" in results and "error" not in results["patient_sentiment"]:
+            sentiment = results["patient_sentiment"]
+            summary["key_findings"].append(
+                f"Patient Satisfaction: {sentiment.get('treatment_satisfaction_score', 0)}% | Sentiment: {sentiment.get('sentiment_classification', 'Unknown')}"
+            )
+            if sentiment.get("unmet_needs_identified"):
+                summary["opportunities"].extend([
+                    f"Unmet need: {need['need']}"
+                    for need in sentiment["unmet_needs_identified"][:2]
+                ])
         
         # Extract validation concerns
         if "validation" in results and "error" not in results["validation"]:

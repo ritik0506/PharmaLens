@@ -19,7 +19,12 @@ from typing import Dict, Any
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
-from ..utils.drug_data_generator import DrugDataGenerator
+from ..utils.drug_data_generator import (
+    DrugDataGenerator, 
+    get_drug_seed, 
+    get_drug_specific_value, 
+    get_drug_choice
+)
 
 logger = structlog.get_logger(__name__)
 
@@ -107,7 +112,7 @@ class MarketAgent:
             # Market Metrics
             "market_size_billions": market_size,
             "market_cagr_percent": cagr,
-            "addressable_market_share_percent": round(random.uniform(5, 20), 1),
+            "addressable_market_share_percent": round(get_drug_specific_value(molecule, 5, 20, offset=50), 1),
             
             # Timeline & Risk
             "time_to_market_years": time_to_market,
@@ -116,8 +121,8 @@ class MarketAgent:
             
             # Competitive Analysis
             "competitive_landscape": market_data.get("competitive_landscape", "Moderate"),
-            "key_competitors": self._generate_competitors(),
-            "patent_cliff_risk": random.choice(["Low", "Medium", "High"]),
+            "key_competitors": self._generate_competitors(molecule),
+            "patent_cliff_risk": get_drug_choice(molecule, ["Low", "Medium", "High"], offset=100),
             
             # Recommendation
             "recommendation": recommendation,
@@ -140,14 +145,18 @@ class MarketAgent:
         
         return result
     
-    def _generate_competitors(self) -> list:
+    def _generate_competitors(self, molecule: str) -> list:
         """Generate list of simulated competitors"""
         pharma_companies = [
             "Pfizer", "Novartis", "Roche", "Johnson & Johnson",
             "Merck", "AstraZeneca", "Sanofi", "GSK",
             "AbbVie", "Bristol-Myers Squibb", "Eli Lilly", "Amgen"
         ]
-        return random.sample(pharma_companies, k=random.randint(2, 4))
+        # Use drug-specific selection
+        seed = get_drug_seed(molecule)
+        num_competitors = 2 + (seed % 3)  # 2-4 competitors
+        start_idx = seed % len(pharma_companies)
+        return [pharma_companies[(start_idx + i) % len(pharma_companies)] for i in range(num_competitors)]
     
     def _generate_thesis(self, molecule: str, roi: float) -> str:
         """Generate investment thesis based on analysis"""

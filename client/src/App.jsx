@@ -7,8 +7,6 @@ import { ResearchProvider } from './context/ResearchContext';
 import { ModelProvider } from './context/ModelContext';
 
 import Navbar from './components/layout/Navbar';
-import ThemeToggle from './components/ui/ThemeToggle';
-import ModelSwitcher from './components/layout/ModelSwitcher';
 
 import ResearchDashboard from './pages/ResearchDashboard';
 import ReportPreview from './pages/ReportPreview';
@@ -25,12 +23,6 @@ function Layout({ children }) {
     <div className="min-h-screen bg-gray-50 dark:bg-[#08101a] transition-colors">
       {/* Navigation */}
       <Navbar />
-
-      {/* Top bar with model switcher and theme toggle */}
-      <div className="container mx-auto px-4 py-3 flex items-center justify-end gap-4">
-        <ModelSwitcher />
-        <ThemeToggle />
-      </div>
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">

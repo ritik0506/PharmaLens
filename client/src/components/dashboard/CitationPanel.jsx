@@ -115,7 +115,7 @@ export const CitableText = ({
 
       {/* Hover tooltip */}
       {showTooltip && hasCitations && (
-        <div className="absolute z-50 bottom-full left-0 mb-2 w-72 bg-white rounded-lg shadow-xl border border-gray-200 p-3 animate-fade-in">
+        <div className="absolute z-50 bottom-full left-0 mb-2 w-72 bg-white dark:bg-slate-800 rounded-lg shadow-xl border border-gray-200 dark:border-slate-600 p-3 animate-fade-in">
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs font-medium text-gray-500">
               {citations.length} Source{citations.length > 1 ? 's' : ''}
@@ -198,18 +198,18 @@ export const CitationSidebar = ({
   const badge = getTypeBadge();
 
   return (
-    <div className="fixed inset-y-0 right-0 w-96 bg-white shadow-2xl z-50 flex flex-col animate-slide-in-right">
+    <div className="fixed inset-y-0 right-0 w-96 bg-white dark:bg-slate-800 shadow-2xl z-50 flex flex-col animate-slide-in-right border-l border-gray-200 dark:border-slate-600">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-600 flex items-center justify-between">
         <div className="flex items-center space-x-3">
           {getTypeIcon()}
-          <h3 className="font-semibold text-gray-900">Source Verification</h3>
+          <h3 className="font-semibold text-gray-900 dark:text-white">Source Verification</h3>
         </div>
         <button
           onClick={onClose}
-          className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+          className="p-2 hover:bg-gray-100 dark:hover:bg-slate-700 rounded-lg transition-colors"
         >
-          <X className="w-5 h-5 text-gray-500" />
+          <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
         </button>
       </div>
 
@@ -221,29 +221,29 @@ export const CitationSidebar = ({
         </div>
 
         {/* Title */}
-        <h4 className="text-lg font-semibold text-gray-900 mb-2">
+        <h4 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
           {citation.title}
         </h4>
 
         {/* Metadata */}
         <div className="space-y-2 mb-4">
           {citation.authors && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               <span className="font-medium">Authors:</span> {citation.authors}
             </div>
           )}
           {citation.journal && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               <span className="font-medium">Journal:</span> {citation.journal}
             </div>
           )}
           {citation.sponsor && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               <span className="font-medium">Sponsor:</span> {citation.sponsor}
             </div>
           )}
           {citation.assignee && (
-            <div className="text-sm text-gray-600">
+            <div className="text-sm text-gray-600 dark:text-gray-400">
               <span className="font-medium">Assignee:</span> {citation.assignee}
             </div>
           )}
@@ -354,19 +354,19 @@ const CitationPanel = ({
     : citations.filter(c => c.type === selectedCategory);
 
   return (
-    <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-      <div className="p-4 border-b border-gray-200">
-        <h3 className="text-lg font-semibold text-gray-900 flex items-center">
-          <BookOpen className="w-5 h-5 mr-2 text-blue-600" />
+    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-2xl overflow-hidden border border-gray-100 dark:border-slate-700">
+      <div className="p-4 border-b border-gray-200 dark:border-slate-600">
+        <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center">
+          <BookOpen className="w-5 h-5 mr-2 text-blue-600 dark:text-blue-400" />
           Source Citations
         </h3>
-        <p className="text-sm text-gray-500 mt-1">
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
           Zero-trust citation verification for AI-generated insights
         </p>
       </div>
 
       {/* Category Filter */}
-      <div className="px-4 py-2 border-b border-gray-100 flex space-x-2 overflow-x-auto">
+      <div className="px-4 py-2 border-b border-gray-100 dark:border-slate-700 flex space-x-2 overflow-x-auto bg-gray-50 dark:bg-slate-900">
         {[
           { id: 'all', label: 'All Sources' },
           { id: 'pubmed', label: 'PubMed' },
@@ -379,8 +379,8 @@ const CitationPanel = ({
             onClick={() => setSelectedCategory(cat.id)}
             className={`px-3 py-1 rounded-full text-sm font-medium whitespace-nowrap transition-colors ${
               selectedCategory === cat.id
-                ? 'bg-blue-100 text-blue-700'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
+                : 'bg-gray-100 dark:bg-slate-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-slate-600'
             }`}
           >
             {cat.label}
@@ -391,7 +391,7 @@ const CitationPanel = ({
       {/* Citations List */}
       <div className="p-4 space-y-3 max-h-80 overflow-y-auto">
         {filteredCitations.length === 0 ? (
-          <div className="text-center py-8 text-gray-500">
+          <div className="text-center py-8 text-gray-500 dark:text-gray-400">
             <Database className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p className="text-sm">No citations in this category</p>
           </div>

@@ -237,3 +237,85 @@ class DrugDataGenerator:
             "peak_sales_year": int(get_drug_specific_value(molecule, 2020, 2030, offset=3)),
             "current_sales_usd_m": int(get_drug_specific_value(molecule, market_size * 50, market_size * 200, offset=4))
         }
+    
+    @staticmethod
+    def get_web_intelligence_data(molecule: str) -> Dict[str, Any]:
+        """Generate drug-specific web intelligence data."""
+        info = DrugDataGenerator.get_drug_info(molecule)
+        
+        return {
+            "total_publications": int(get_drug_specific_value(molecule, 500, 5000)),
+            "publications_last_year": int(get_drug_specific_value(molecule, 50, 300, offset=1)),
+            "publications_last_30_days": int(get_drug_specific_value(molecule, 3, 15, offset=2)),
+            "num_recent_papers": int(get_drug_specific_value(molecule, 3, 8, offset=3)),
+            "num_news_items": int(get_drug_specific_value(molecule, 2, 6, offset=4)),
+            "signal_strength": round(get_drug_specific_value(molecule, 0.6, 0.95, offset=5), 2),
+            "regulatory_risk": get_drug_choice(molecule, ["Low", "Medium", "High"], offset=6),
+            "publication_trend": get_drug_choice(molecule, ["Increasing ↑", "Stable →", "Decreasing ↓"], offset=7)
+        }
+    
+    @staticmethod
+    def get_exim_data(molecule: str) -> Dict[str, Any]:
+        """Generate drug-specific export-import trade data."""
+        return {
+            "total_trade_volume_mt": round(get_drug_specific_value(molecule, 100, 2000), 1),
+            "china_share": int(get_drug_specific_value(molecule, 55, 75, offset=1)),
+            "india_share": int(get_drug_specific_value(molecule, 15, 30, offset=2)),
+            "import_dependency_risk": get_drug_choice(molecule, ["Low", "Medium", "High"], offset=3),
+            "num_trade_flows": int(get_drug_specific_value(molecule, 4, 8, offset=4)),
+            "price_trend": get_drug_choice(molecule, ["Stable", "Increasing", "Decreasing"], offset=5),
+            "supply_risk_level": get_drug_choice(molecule, ["Low", "Medium", "High", "Critical"], offset=6)
+        }
+    
+    @staticmethod
+    def get_kol_data(molecule: str) -> Dict[str, Any]:
+        """Generate drug-specific KOL (Key Opinion Leader) data."""
+        info = DrugDataGenerator.get_drug_info(molecule)
+        
+        # Map drug to therapeutic area
+        indication = info.get("typical_indications", ["General"])[0].lower()
+        if any(term in indication for term in ["cancer", "oncology", "tumor"]):
+            therapeutic_area = "oncology"
+        elif any(term in indication for term in ["immune", "arthritis", "autoimmune"]):
+            therapeutic_area = "immunology"
+        elif any(term in indication for term in ["brain", "neuro", "alzheimer"]):
+            therapeutic_area = "neurology"
+        elif any(term in indication for term in ["heart", "cardio", "cholesterol"]):
+            therapeutic_area = "cardiology"
+        elif any(term in indication for term in ["diabetes", "metabolic"]):
+            therapeutic_area = "endocrinology"
+        else:
+            therapeutic_area = "general_medicine"
+        
+        return {
+            "therapeutic_area": therapeutic_area,
+            "num_kols": int(get_drug_specific_value(molecule, 3, 8, offset=1)),
+            "collaboration_score": round(get_drug_specific_value(molecule, 0.7, 0.95, offset=2), 2),
+            "avg_h_index": int(get_drug_specific_value(molecule, 65, 92, offset=3)),
+            "total_publications": int(get_drug_specific_value(molecule, 800, 2500, offset=4))
+        }
+    
+    @staticmethod
+    def get_pathfinder_data(molecule: str) -> Dict[str, Any]:
+        """Generate drug-specific molecular pathway data."""
+        return {
+            "num_primary_targets": int(get_drug_specific_value(molecule, 2, 6, offset=1)),
+            "num_pathways": int(get_drug_specific_value(molecule, 3, 8, offset=2)),
+            "num_indirect_targets": int(get_drug_specific_value(molecule, 5, 20, offset=3)),
+            "repurposing_score": round(get_drug_specific_value(molecule, 0.5, 0.9, offset=4), 2),
+            "pathway_confidence": round(get_drug_specific_value(molecule, 0.7, 0.95, offset=5), 2),
+            "num_repurposing_opportunities": int(get_drug_specific_value(molecule, 2, 6, offset=6))
+        }
+    
+    @staticmethod
+    def get_internal_knowledge_data(molecule: str) -> Dict[str, Any]:
+        """Generate drug-specific internal knowledge data."""
+        info = DrugDataGenerator.get_drug_info(molecule)
+        
+        return {
+            "num_relevant_docs": int(get_drug_specific_value(molecule, 3, 12, offset=1)),
+            "strategic_priority": get_drug_choice(molecule, ["High", "Medium", "Low"], offset=2),
+            "internal_expertise_level": get_drug_choice(molecule, ["Expert", "Advanced", "Intermediate"], offset=3),
+            "past_research_count": int(get_drug_specific_value(molecule, 5, 30, offset=4)),
+            "competitive_intel_score": round(get_drug_specific_value(molecule, 0.6, 0.9, offset=5), 2)
+        }

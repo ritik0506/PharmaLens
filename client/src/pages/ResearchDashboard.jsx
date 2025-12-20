@@ -33,23 +33,24 @@ import {
 
 // Use the safe hook exported from ResearchContext (returns fallbacks when provider missing)
 import { useResearch } from '../context/ResearchContext';
-import { useModel } from '../context/ModelContext';
 
 import { researchService } from '../services/api';
 import AgentStatusCard from '../components/dashboard/AgentStatusCard';
 import AgentDetailPanel from '../components/dashboard/AgentDetailPanel';
-import ROICalculator from '../components/dashboard/ROICalculator';
+import ComprehensiveSummary from '../components/dashboard/ComprehensiveSummary';
 import AutoSuggestInput from '../components/dashboard/AutoSuggestInput';
 import CitationPanel from '../components/dashboard/CitationPanel';
 import ReportGenerator from '../components/dashboard/ReportGenerator';
 import WatchAlertModule from '../components/dashboard/WatchAlertModule';
-import KnowledgeGraph from '../components/graph/KnowledgeGraph';
+import KnowledgeGraphEnhanced from '../components/graph/KnowledgeGraphEnhanced';
 import StrategySelector from '../components/StrategySelector';
 
 const ResearchDashboard = () => {
   // useResearch gives safe defaults if provider isn't present
   const { privacyMode } = useResearch();
-  const { selectedModel } = useModel();
+  
+  // Map privacy mode to model: secure -> ollama (Llama 3), cloud -> openai (GPT-4)
+  const selectedModel = privacyMode === 'secure' ? 'ollama' : 'openai';
 
   const [drugName, setDrugName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -165,23 +166,23 @@ const ResearchDashboard = () => {
     <div className="max-w-7xl mx-auto space-y-8">
       {/* Header */}
       <div className="text-center">
-        <h1 className="text-4xl font-bold text-gray-900 mb-2 flex items-center justify-center">
-          <Sparkles className="w-8 h-8 mr-3 text-indigo-500" />
+        <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2 flex items-center justify-center">
+          <Sparkles className="w-8 h-8 mr-3 text-indigo-500 dark:text-indigo-400" />
           Drug Repurposing Analysis
         </h1>
-        <p className="text-gray-600 text-lg">
+        <p className="text-gray-600 dark:text-gray-400 text-lg">
           Enter a drug or molecule name to analyze with our 10 specialized AI agents
         </p>
       </div>
 
       {/* Search Form */}
-      <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
+      <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-2xl p-6 border border-gray-100 dark:border-slate-700">
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="mb-4">
             <button
               type="button"
               onClick={() => setShowStrategySelector(!showStrategySelector)}
-              className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center"
+              className="text-sm text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 flex items-center"
             >
               <Sparkles className="w-4 h-4 mr-1" />
               Use Strategic Query Library
@@ -232,8 +233,8 @@ const ResearchDashboard = () => {
           {/* Mode Indicator */}
           <div className={`text-sm text-center py-3 rounded-xl flex items-center justify-center space-x-2 ${
             privacyMode === 'secure'
-              ? 'bg-gradient-to-r from-green-50 to-emerald-50 text-green-700 border border-green-200'
-              : 'bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 border border-blue-200'
+              ? 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 text-green-700 dark:text-green-400 border border-green-200 dark:border-green-800'
+              : 'bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 text-blue-700 dark:text-blue-400 border border-blue-200 dark:border-blue-800'
           }`}>
             <Shield className="w-4 h-4" />
             <span>
@@ -245,24 +246,24 @@ const ResearchDashboard = () => {
 
       {/* Error */}
       {error && (
-        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-center space-x-3">
-          <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-          <span className="text-red-700">{error}</span>
+        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 flex items-center space-x-3">
+          <AlertCircle className="w-5 h-5 text-red-500 dark:text-red-400 flex-shrink-0" />
+          <span className="text-red-700 dark:text-red-300">{error}</span>
         </div>
       )}
 
       {/* Agent Status Cards */}
       {(isLoading || results) && (
-        <div className="bg-white rounded-2xl shadow-lg p-6 space-y-5">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-2xl p-6 space-y-5 border border-gray-100 dark:border-slate-700">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-bold text-gray-900 flex items-center">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mr-3 shadow-lg shadow-indigo-200">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 dark:from-indigo-600 dark:to-purple-700 flex items-center justify-center mr-3 shadow-lg shadow-indigo-200 dark:shadow-indigo-900/50">
                   <Users className="w-5 h-5 text-white" />
                 </div>
                 AI Agent Overview
               </h2>
-              <p className="text-sm text-gray-500 mt-1 ml-13">
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 ml-13">
                 Click on any completed agent to view detailed analysis
               </p>
             </div>
@@ -323,15 +324,15 @@ const ResearchDashboard = () => {
       {results && !isLoading && (
         <div className="space-y-6">
           {/* Success Header */}
-          <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 rounded-2xl p-1 shadow-lg shadow-green-200">
-            <div className="bg-white rounded-xl p-5 flex items-center justify-between">
+          <div className="bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500 dark:from-emerald-600 dark:via-green-600 dark:to-teal-600 rounded-2xl p-1 shadow-lg shadow-green-200 dark:shadow-green-900/50">
+            <div className="bg-white dark:bg-slate-800 rounded-xl p-5 flex items-center justify-between">
               <div className="flex items-center space-x-4">
-                <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-green-500 rounded-xl flex items-center justify-center shadow-lg shadow-green-200">
+                <div className="w-14 h-14 bg-gradient-to-br from-emerald-400 to-green-500 dark:from-emerald-500 dark:to-green-600 rounded-xl flex items-center justify-center shadow-lg shadow-green-200 dark:shadow-green-900/50">
                   <CheckCircle2 className="w-7 h-7 text-white" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-bold text-gray-900">Analysis Complete!</h3>
-                  <p className="text-gray-500 text-sm mt-0.5">
+                  <h3 className="text-xl font-bold text-gray-900 dark:text-white">Analysis Complete!</h3>
+                  <p className="text-gray-500 dark:text-gray-400 text-sm mt-0.5">
                     <span className="font-medium text-emerald-600">{drugName}</span> analyzed successfully •
                     <span className="text-gray-400 ml-1">{results.results?.processingTimeMs || 0}ms</span>
                   </p>
@@ -345,9 +346,9 @@ const ResearchDashboard = () => {
           </div>
 
           {/* Tabs Navigation */}
-          <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
-            <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 p-1">
-              <div className="bg-white rounded-t-xl">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg dark:shadow-2xl overflow-hidden">
+            <div className="bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 dark:from-indigo-600 dark:via-purple-600 dark:to-pink-600 p-1">
+              <div className="bg-white dark:bg-slate-800 rounded-t-xl">
                 <nav className="flex space-x-1 p-3 overflow-x-auto">
                   {[
                     { id: 'results', label: 'Summary & ROI', icon: TrendingUp, color: 'emerald' },
@@ -377,91 +378,15 @@ const ResearchDashboard = () => {
               {/* Results Tab */}
               {activeTab === 'results' && (
                 <div className="space-y-6">
-                  <ROICalculator data={results.results?.market} molecule={drugName} />
-
-                  <div className="grid md:grid-cols-2 gap-6">
-                    {results.results?.clinical && (
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                          <FileText className="w-5 h-5 mr-2 text-blue-600" />
-                          Clinical Insights
-                        </h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Trials Found</span>
-                            <span className="font-semibold">{results.results.clinical.total_trials_found}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Safety Score</span>
-                            <span className="font-semibold text-green-600">{results.results.clinical.safety_score}/10</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Efficacy Rating</span>
-                            <span className="font-semibold">{results.results.clinical.efficacy_rating}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
-                    {results.results?.patent && (
-                      <div className="bg-gray-50 rounded-xl p-6">
-                        <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                          <FileText className="w-5 h-5 mr-2 text-purple-600" />
-                          Patent Landscape
-                        </h3>
-                        <div className="space-y-3">
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Active Patents</span>
-                            <span className="font-semibold">{results.results.patent.active_patents}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">FTO Status</span>
-                            <span className="font-semibold">{results.results.patent.freedom_to_operate}</span>
-                          </div>
-                          <div className="flex justify-between">
-                            <span className="text-gray-600">Expiration</span>
-                            <span className="font-semibold">{results.results.patent.earliest_expiration}</span>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {results.results?.validation && (
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                        <Shield className="w-5 h-5 mr-2 text-yellow-600" />
-                        Validation Results (The Skeptic)
-                      </h3>
-                      <div className="grid md:grid-cols-3 gap-4">
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-yellow-600">
-                            {results.results.validation.confidence_score || 85}%
-                          </div>
-                          <div className="text-sm text-gray-600">Confidence Score</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-red-600">
-                            {results.results.validation.risk_flags?.length || 2}
-                          </div>
-                          <div className="text-sm text-gray-600">Risk Flags</div>
-                        </div>
-                        <div className="text-center">
-                          <div className="text-2xl font-bold text-green-600">
-                            {results.results.validation.verified_claims || 12}
-                          </div>
-                          <div className="text-sm text-gray-600">Verified Claims</div>
-                        </div>
-                      </div>
-                    </div>
-                  )}
+                  <ComprehensiveSummary agentResults={results.results} molecule={drugName} />
                 </div>
               )}
 
               {activeTab === 'graph' && (
-                <KnowledgeGraph
+                <KnowledgeGraphEnhanced
                   molecule={drugName}
-                  agentResults={results.results}
+                  data={results.results?.vision}
+                  graphData={results.results?.vision?.knowledge_graph}
                 />
               )}
 
@@ -485,7 +410,7 @@ const ResearchDashboard = () => {
           <div className="text-center">
             <button
               onClick={handleReset}
-              className="px-6 py-3 bg-gray-100 hover:bg-gray-200 rounded-xl font-medium text-gray-700 transition-colors"
+              className="px-6 py-3 bg-gray-100 dark:bg-slate-700 hover:bg-gray-200 dark:hover:bg-slate-600 rounded-xl font-medium text-gray-700 dark:text-gray-200 transition-colors"
             >
               Start New Research
             </button>

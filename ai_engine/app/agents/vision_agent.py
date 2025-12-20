@@ -66,6 +66,46 @@ class VisionAgent:
         # Generate drug-specific vision data
         vision_data = DrugDataGenerator.get_vision_data(molecule)
         
+        # Try to get LLM-enhanced molecular insights
+        llm_insights = None
+        try:
+            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+                prompt = f"""Analyze the molecular structure of {molecule}:
+
+Molecular Weight: {vision_data['molecular_weight']}
+Binding Sites: {vision_data['binding_sites_identified']}
+Binding Affinity: {vision_data['binding_affinity_score']}/10
+Druglikeness: {vision_data['druglikeness_score']}/10
+LogP: {vision_data['logP']}
+Lipinski Violations: {vision_data['lipinski_violations']}
+
+Provide concise analysis of:
+1. Drug-like properties and oral bioavailability
+2. Potential binding mechanisms
+3. Structural optimization opportunities
+
+Keep response under 150 words."""
+                
+                llm_insights = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an expert medicinal chemist analyzing molecular structures.",
+                    temperature=0.6,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_vision_insights_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider")
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
+        
         result = {
             "molecule": molecule,
             "analysis_date": datetime.now().isoformat(),
@@ -109,6 +149,10 @@ class VisionAgent:
                 "conformers_generated": random.randint(5, 20),
                 "energy_minimized": True
             },
+            
+            # LLM Enhancement
+            "llm_insights": llm_insights,
+            "llm_provider": llm_config.get("provider") if llm_insights else None,
             
             # Metadata
             "agent": self.name,

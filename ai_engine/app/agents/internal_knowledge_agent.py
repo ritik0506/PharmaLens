@@ -18,6 +18,7 @@ from typing import Dict, Any, List, Optional
 import structlog
 from ..services.llm_service import get_llm_service
 from ..services.prompt_templates import PromptTemplates
+from ..utils.drug_data_generator import DrugDataGenerator
 
 logger = structlog.get_logger(__name__)
 
@@ -36,6 +37,7 @@ class InternalKnowledgeAgent:
     def __init__(self):
         self.name = "InternalKnowledgeAgent"
         self.version = "1.0.0"
+        self.llm_service = get_llm_service()
         
         # Simulated document repository
         self.document_index = self._initialize_document_index()
@@ -114,6 +116,9 @@ class InternalKnowledgeAgent:
             secure_mode=llm_config.get("provider") == "local"
         )
         
+        # Get drug-specific data
+        knowledge_data = DrugDataGenerator.get_internal_knowledge_data(molecule)
+        
         # Ensure local processing for security
         is_secure = llm_config.get("provider") == "local"
         
@@ -121,7 +126,7 @@ class InternalKnowledgeAgent:
         await asyncio.sleep(random.uniform(0.5, 1.0))
         
         # Search relevant documents
-        relevant_docs = self._search_documents(molecule, query)
+        relevant_docs = self._search_documents(molecule, query, knowledge_data)
         
         # Extract insights using RAG
         rag_insights = self._extract_rag_insights(molecule, relevant_docs)
@@ -131,6 +136,45 @@ class InternalKnowledgeAgent:
         
         # Identify knowledge gaps
         gaps = self._identify_knowledge_gaps(molecule, relevant_docs)
+        
+        # Try to get LLM-enhanced document synthesis (using LOCAL Llama 3 for security)
+        llm_synthesis = None
+        try:
+            if llm_config.get("provider") in ["ollama", "local"]:
+                doc_titles = [doc['title'] for doc in relevant_docs[:5]]
+                prompt = f"""Synthesize internal knowledge for {molecule}:
+
+Documents Found: {len(relevant_docs)}
+Key Documents:
+{chr(10).join(f"- {title}" for title in doc_titles)}
+
+Provide concise synthesis covering:
+1. Key historical insights
+2. Strategic recommendations from past analysis
+3. Critical learnings
+
+Keep response under 150 words. CONFIDENTIAL - LOCAL PROCESSING ONLY."""
+                
+                llm_synthesis = await self.llm_service.generate_completion(
+                    prompt=prompt,
+                    llm_config=llm_config,
+                    system_prompt="You are an internal strategic analyst. All information is CONFIDENTIAL.",
+                    temperature=0.6,
+                    max_tokens=800
+                )
+                logger.info(
+                    "llm_synthesis_completed",
+                    agent=self.name,
+                    provider=llm_config.get("provider"),
+                    secure=True
+                )
+        except Exception as e:
+            logger.warning(
+                "llm_enhancement_failed",
+                agent=self.name,
+                error=str(e),
+                fallback="deterministic"
+            )
         
         result = {
             "molecule": molecule,
@@ -181,7 +225,8 @@ class InternalKnowledgeAgent:
     def _search_documents(
         self, 
         molecule: str, 
-        query: Optional[str] = None
+        query: Optional[str] = None,
+        knowledge_data: Dict[str, Any] = None
     ) -> List[Dict[str, Any]]:
         """Search document repository using semantic search."""
         results = []
@@ -214,6 +259,10 @@ class InternalKnowledgeAgent:
                     "snippet": self._generate_document_snippet(doc, molecule),
                     "page_references": [random.randint(1, 50) for _ in range(random.randint(1, 3))]
                 })
+                
+                # Limit to drug-specific number of docs
+                if knowledge_data and len(results) >= knowledge_data.get("num_relevant_docs", 5):
+                    break
         
         # Sort by relevance
         return sorted(results, key=lambda x: x["relevance_score"], reverse=True)[:5]
