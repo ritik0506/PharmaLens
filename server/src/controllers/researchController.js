@@ -91,7 +91,7 @@ const processResearch = async (req, res) => {
       molecule,
       mode,
       requestId,
-      agents: ['clinical', 'patent', 'market', 'vision'],
+      agents: ['clinical', 'patent', 'iqvia', 'vision', 'exim', 'web_intelligence', 'internal_knowledge', 'regulatory', 'patient_sentiment'],
       provider
     });
 
