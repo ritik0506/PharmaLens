@@ -83,7 +83,7 @@ class WebIntelligenceAgent:
         # Try to get LLM-enhanced intelligence synthesis
         llm_intelligence = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Synthesize web intelligence for {molecule}:
 
 Recent Publications: {len(pubmed_results['recent_papers'])} new papers

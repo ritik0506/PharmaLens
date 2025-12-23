@@ -71,7 +71,7 @@ class AnalyzeRequest(BaseModel):
     """Request model for compound analysis"""
     molecule: str = Field(..., min_length=2, max_length=200, description="Name of the drug/compound")
     mode: str = Field(default="auto", pattern="^(secure|cloud|auto)$", description="Processing mode: auto (detect best), secure (force local), cloud (any cloud provider)")
-    provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
+    provider: Optional[str] = Field(None, pattern="^(ollama|gemini)$", description="Specific LLM provider: ollama (llama3), gemini (gemini-1.5-flash)")
     request_id: str = Field(..., description="Unique request identifier")
     agents: Optional[List[str]] = Field(
         default=["clinical", "patent", "iqvia", "vision"],
@@ -85,7 +85,7 @@ class OrchestratedRequest(BaseModel):
     molecule: Optional[str] = Field(None, description="Specific molecule name if applicable")
     disease: Optional[str] = Field(None, description="Target disease if applicable")
     mode: str = Field(default="auto", pattern="^(secure|cloud|auto)$", description="Processing mode: auto (detect best), secure (force local), cloud (any cloud provider)")
-    provider: Optional[str] = Field(None, pattern="^(ollama|openai|anthropic)$", description="Specific LLM provider: ollama (llama3), openai (gpt-4), anthropic (claude)")
+    provider: Optional[str] = Field(None, pattern="^(ollama|gemini)$", description="Specific LLM provider: ollama (llama3), gemini (gemini-1.5-flash)")
     request_id: str = Field(..., description="Unique request identifier")
 
 
@@ -333,6 +333,67 @@ async def analyze_compound(request: AnalyzeRequest):
                 "name": "VisionAgent",
                 "status": "completed",
                 "duration_ms": vision_result.get("processing_time_ms", 0)
+            })
+        
+        if "exim" in request.agents:
+            exim_result = await app.state.exim_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["exim"] = exim_result
+            results["agents_executed"].append({
+                "name": "EXIMAgent",
+                "status": "completed",
+                "duration_ms": exim_result.get("processing_time_ms", 0)
+            })
+        
+        if "web_intelligence" in request.agents:
+            web_intel_result = await app.state.web_intel_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["web_intelligence"] = web_intel_result
+            results["agents_executed"].append({
+                "name": "WebIntelligenceAgent",
+                "status": "completed",
+                "duration_ms": web_intel_result.get("processing_time_ms", 0)
+            })
+        
+        if "internal_knowledge" in request.agents:
+            internal_knowledge_result = await app.state.internal_knowledge_agent.analyze(
+                request.molecule,
+                llm_config,
+                query=None
+            )
+            results["internal_knowledge"] = internal_knowledge_result
+            results["agents_executed"].append({
+                "name": "InternalKnowledgeAgent",
+                "status": "completed",
+                "duration_ms": internal_knowledge_result.get("processing_time_ms", 0)
+            })
+        
+        if "regulatory" in request.agents:
+            regulatory_result = await app.state.regulatory_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["regulatory"] = regulatory_result
+            results["agents_executed"].append({
+                "name": "RegulatoryAgent",
+                "status": "completed",
+                "duration_ms": regulatory_result.get("processing_time_ms", 0)
+            })
+        
+        if "patient_sentiment" in request.agents:
+            patient_sentiment_result = await app.state.patient_sentiment_agent.analyze(
+                request.molecule,
+                llm_config
+            )
+            results["patient_sentiment"] = patient_sentiment_result
+            results["agents_executed"].append({
+                "name": "PatientSentimentAgent",
+                "status": "completed",
+                "duration_ms": patient_sentiment_result.get("processing_time_ms", 0)
             })
         
         # Add knowledge graph summary

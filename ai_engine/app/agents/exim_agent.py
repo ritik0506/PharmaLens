@@ -81,7 +81,7 @@ class EXIMAgent:
         # Try to get LLM-enhanced supply chain strategy
         llm_supply_strategy = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 primary_source = sourcing_hubs[0]["country"] if sourcing_hubs else "Unknown"
                 prompt = f"""Analyze the supply chain for {molecule}:
 

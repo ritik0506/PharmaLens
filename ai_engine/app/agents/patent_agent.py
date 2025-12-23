@@ -75,7 +75,7 @@ class PatentAgent:
         # Try to get LLM-enhanced patent strategy
         llm_strategy = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Analyze the patent landscape for {molecule}:
 
 Active Patents: {patent_data['active_patents']}

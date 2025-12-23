@@ -112,7 +112,7 @@ class PatientSentimentAgent:
         # Try to get LLM-enhanced sentiment insights
         llm_insights = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Analyze patient sentiment for {molecule}:
 
 Overall Sentiment Score: {sentiment_score} (-1 to +1 scale)

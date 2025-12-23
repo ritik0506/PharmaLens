@@ -69,7 +69,7 @@ class VisionAgent:
         # Try to get LLM-enhanced molecular insights
         llm_insights = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Analyze the molecular structure of {molecule}:
 
 Molecular Weight: {vision_data['molecular_weight']}

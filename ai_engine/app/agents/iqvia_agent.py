@@ -92,7 +92,7 @@ class IQVIAInsightsAgent:
         # Try to get LLM-enhanced market strategy
         llm_market_strategy = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Analyze the commercial opportunity for {molecule}:
 
 Therapy Area: {therapy_area}

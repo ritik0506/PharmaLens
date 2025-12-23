@@ -2,7 +2,7 @@
 PharmaLens LLM Service
 ======================
 Unified interface for LLM calls with retry logic, rate limiting, and error handling.
-Supports OpenAI GPT-4, Anthropic Claude, Ollama (local), and Llama-cpp (local) models.
+Supports OpenAI GPT-4, Google Gemini, Anthropic Claude, Ollama (local), and Llama-cpp (local) models.
 """
 
 import time
@@ -62,39 +62,23 @@ class LLMService:
     """
     
     def __init__(self):
-        self.openai_client = None
-        self.anthropic_client = None
-        self.llama_model = None
+        self.gemini_client = None
         self.ollama_client = None
         self.rate_limiter = RateLimiter(max_calls=50, time_window=60)
         self._initialized = False
     
-    def _init_openai(self, api_key: str):
-        """Initialize OpenAI client"""
-        if not self.openai_client:
+    def _init_gemini(self, api_key: str):
+        """Initialize Google Gemini client"""
+        if not self.gemini_client:
             try:
-                from openai import AsyncOpenAI
-                self.openai_client = AsyncOpenAI(api_key=api_key)
-                logger.info("OpenAI client initialized")
+                from google import genai
+                self.gemini_client = genai.Client(api_key=api_key)
+                logger.info("Google Gemini client initialized (new SDK)")
             except ImportError:
-                logger.error("openai package not installed. Run: pip install openai")
+                logger.error("google-genai package not installed. Run: pip install google-genai")
                 raise
             except Exception as e:
-                logger.error(f"Failed to initialize OpenAI client: {e}")
-                raise
-    
-    def _init_anthropic(self, api_key: str):
-        """Initialize Anthropic Claude client"""
-        if not self.anthropic_client:
-            try:
-                from anthropic import AsyncAnthropic
-                self.anthropic_client = AsyncAnthropic(api_key=api_key)
-                logger.info("Anthropic Claude client initialized")
-            except ImportError:
-                logger.error("anthropic package not installed. Run: pip install anthropic")
-                raise
-            except Exception as e:
-                logger.error(f"Failed to initialize Anthropic client: {e}")
+                logger.error(f"Failed to initialize Gemini client: {e}")
                 raise
     
     def _init_llama(self, model_path: str):
@@ -142,7 +126,7 @@ class LLMService:
         system_prompt: Optional[str] = None,
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None,
-        timeout: int = 60
+        timeout: int = 180  # 3 minutes for Ollama model loading
     ) -> str:
         """
         Generate completion using configured LLM (OpenAI, Anthropic, Ollama, or Llama).
@@ -153,7 +137,7 @@ class LLMService:
             system_prompt: Optional system instruction
             temperature: Override default temperature
             max_tokens: Override default max tokens
-            timeout: Timeout in seconds (default 60s)
+            timeout: Timeout in seconds (default 180s for Ollama model loading)
             
         Returns:
             Generated text response
@@ -165,20 +149,9 @@ class LLMService:
         
         try:
             # Wrap generation in timeout
-            if provider == "openai":
+            if provider == "gemini":
                 result = await asyncio.wait_for(
-                    self._generate_openai(
-                        prompt=prompt,
-                        llm_config=llm_config,
-                        system_prompt=system_prompt,
-                        temperature=temperature,
-                        max_tokens=max_tokens
-                    ),
-                    timeout=timeout
-                )
-            elif provider == "anthropic":
-                result = await asyncio.wait_for(
-                    self._generate_anthropic(
+                    self._generate_gemini(
                         prompt=prompt,
                         llm_config=llm_config,
                         system_prompt=system_prompt,
@@ -221,7 +194,7 @@ class LLMService:
             logger.error(f"LLM generation failed: {e}", provider=provider)
             raise
     
-    async def _generate_openai(
+    async def _generate_gemini(
         self,
         prompt: str,
         llm_config: Dict[str, Any],
@@ -229,82 +202,48 @@ class LLMService:
         temperature: Optional[float] = None,
         max_tokens: Optional[int] = None
     ) -> str:
-        """Generate completion using OpenAI API"""
+        """Generate completion using Google Gemini API"""
         
-        # Initialize OpenAI client if needed
+        # Initialize Gemini client if needed
         api_key = llm_config.get("api_key")
         if not api_key:
-            raise ValueError("OpenAI API key not configured")
+            raise ValueError("Gemini API key not configured")
         
-        self._init_openai(api_key)
+        self._init_gemini(api_key)
         
-        # Prepare messages
-        messages = []
+        # Construct full prompt with system instruction
+        full_prompt = prompt
         if system_prompt:
-            messages.append({"role": "system", "content": system_prompt})
-        messages.append({"role": "user", "content": prompt})
+            full_prompt = f"{system_prompt}\n\n{prompt}"
         
-        # Call OpenAI API
+        # Call Gemini API using new SDK
         try:
-            response = await self.openai_client.chat.completions.create(
-                model=llm_config.get("model", "gpt-4"),
-                messages=messages,
-                temperature=temperature or llm_config.get("temperature", 0.7),
-                max_tokens=max_tokens or llm_config.get("max_tokens", 4096),
+            model_name = llm_config.get("model", "gemini-2.0-flash-exp")
+            
+            # Run in thread pool since the new SDK might have sync operations
+            loop = asyncio.get_event_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: self.gemini_client.models.generate_content(
+                    model=model_name,
+                    contents=full_prompt,
+                    config={
+                        "temperature": temperature or llm_config.get("temperature", 0.7),
+                        "max_output_tokens": max_tokens or llm_config.get("max_tokens", 8192),
+                    }
+                )
             )
             
-            result = response.choices[0].message.content
+            result = response.text
             logger.info(
-                "OpenAI completion generated",
-                model=llm_config.get("model"),
-                tokens=response.usage.total_tokens
+                "Gemini completion generated",
+                model=model_name,
+                characters=len(result)
             )
             return result
         
         except Exception as e:
-            logger.error(f"OpenAI API error: {e}")
-            raise
-    
-    async def _generate_anthropic(
-        self,
-        prompt: str,
-        llm_config: Dict[str, Any],
-        system_prompt: Optional[str] = None,
-        temperature: Optional[float] = None,
-        max_tokens: Optional[int] = None
-    ) -> str:
-        """Generate completion using Anthropic Claude API"""
-        
-        # Initialize Anthropic client if needed
-        api_key = llm_config.get("api_key")
-        if not api_key:
-            raise ValueError("Anthropic API key not configured")
-        
-        self._init_anthropic(api_key)
-        
-        # Call Anthropic API
-        try:
-            response = await self.anthropic_client.messages.create(
-                model=llm_config.get("model", "claude-3-5-sonnet-20241022"),
-                max_tokens=max_tokens or llm_config.get("max_tokens", 4096),
-                temperature=temperature or llm_config.get("temperature", 0.7),
-                system=system_prompt or "You are a helpful pharmaceutical research assistant.",
-                messages=[
-                    {"role": "user", "content": prompt}
-                ]
-            )
-            
-            result = response.content[0].text
-            logger.info(
-                "Anthropic completion generated",
-                model=llm_config.get("model"),
-                input_tokens=response.usage.input_tokens,
-                output_tokens=response.usage.output_tokens
-            )
-            return result
-        
-        except Exception as e:
-            logger.error(f"Anthropic API error: {e}")
+            logger.error(f"Gemini API error: {e}")
             raise
     
     async def _generate_ollama(

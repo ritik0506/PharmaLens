@@ -70,7 +70,7 @@ class ClinicalAgent:
         # Try to get LLM-enhanced interpretation if provider is configured
         llm_interpretation = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = PromptTemplates.clinical_trial_interpretation(molecule, clinical_data)
                 llm_interpretation = await self.llm_service.generate_completion(
                     prompt=prompt,

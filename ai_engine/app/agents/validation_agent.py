@@ -87,7 +87,7 @@ class ValidationAgent:
         # Try to get LLM-enhanced critical validation
         llm_validation = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Critically validate analysis for {molecule}:
 
 Risk Flags: {len(risk_flags)}

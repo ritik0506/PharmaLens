@@ -140,7 +140,7 @@ class InternalKnowledgeAgent:
         # Try to get LLM-enhanced document synthesis (using LOCAL Llama 3 for security)
         llm_synthesis = None
         try:
-            if llm_config.get("provider") in ["ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 doc_titles = [doc['title'] for doc in relevant_docs[:5]]
                 prompt = f"""Synthesize internal knowledge for {molecule}:
 

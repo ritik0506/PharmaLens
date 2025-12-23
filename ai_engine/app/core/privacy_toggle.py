@@ -22,32 +22,27 @@ class PrivacyManager:
     Manages AI model selection and configuration.
     
     Supported Providers:
-    1. Ollama (Local) - llama3:8b, mistral:7b, gemma3:1b
+    1. Google Gemini 1.5 Flash
+       - FREE with generous limits (1M tokens/month)
+       - Fast and capable
+       - 1 million token context window
+       - Requires API key and internet
+    
+    2. Ollama (Local) - llama3:8b, mistral:7b, gemma3:1b
        - HIPAA/GDPR compliant
        - Data never leaves premises
        - Free, unlimited usage
-    
-    2. OpenAI GPT-4
-       - Highest capability for complex analysis
-       - Requires API key and internet
-       - Pay per token
-    
-    3. Anthropic Claude 3.5 Sonnet
-       - Advanced reasoning and analysis
-       - Requires API key and internet
-       - Pay per token
+       - Works offline
     """
     
     def __init__(self):
-        self.openai_enabled = settings.OPENAI_ENABLED and settings.OPENAI_API_KEY is not None
-        self.anthropic_enabled = settings.ANTHROPIC_ENABLED and settings.ANTHROPIC_API_KEY is not None
+        self.gemini_enabled = settings.GEMINI_ENABLED and settings.GEMINI_API_KEY is not None
         self.ollama_enabled = settings.LOCAL_ENABLED
         self.default_provider = settings.DEFAULT_LLM_PROVIDER
         
         logger.info(
             "PrivacyManager initialized",
-            openai_available=self.openai_enabled,
-            anthropic_available=self.anthropic_enabled,
+            gemini_available=self.gemini_enabled,
             ollama_available=self.ollama_enabled,
             default_provider=self.default_provider
         )
@@ -65,54 +60,41 @@ class PrivacyManager:
         """
         # If specific provider requested, use it
         if provider:
-            if provider == "ollama":
+            if provider == "gemini":
+                return self._get_gemini_config()
+            elif provider == "ollama":
                 return self._get_ollama_config()
-            elif provider == "openai":
-                return self._get_openai_config()
-            elif provider == "anthropic":
-                return self._get_anthropic_config()
             else:
                 logger.warning(f"Unknown provider: {provider}, falling back to auto")
         
         # Auto-detect best available provider
         if mode == "auto":
-            # Priority: default_provider > ollama > openai > anthropic
-            if self.default_provider == "ollama" and self.ollama_enabled:
+            # Priority: default_provider > gemini (free) > ollama (local)
+            if self.default_provider == "gemini" and self.gemini_enabled:
+                return self._get_gemini_config()
+            elif self.default_provider == "ollama" and self.ollama_enabled:
                 return self._get_ollama_config()
-            elif self.default_provider == "openai" and self.openai_enabled:
-                return self._get_openai_config()
-            elif self.default_provider == "anthropic" and self.anthropic_enabled:
-                return self._get_anthropic_config()
-            # Fallback priority
+            # Fallback priority: gemini (free) > ollama (local)
+            elif self.gemini_enabled:
+                logger.info("Auto-detected: Google Gemini (free)")
+                return self._get_gemini_config()
             elif self.ollama_enabled:
                 logger.info("Auto-detected: Ollama (local)")
                 return self._get_ollama_config()
-            elif self.openai_enabled:
-                logger.info("Auto-detected: OpenAI GPT-4")
-                return self._get_openai_config()
-            elif self.anthropic_enabled:
-                logger.info("Auto-detected: Anthropic Claude")
-                return self._get_anthropic_config()
             else:
                 logger.error("No LLM provider available!")
-                raise ValueError("No LLM provider configured. Please enable Ollama, OpenAI, or Anthropic.")
+                raise ValueError("No LLM provider configured. Please enable Gemini or Ollama.")
         
         # Secure mode: force local
         if mode == "secure":
             return self._get_ollama_config()
         
-        # Cloud mode: prefer configured cloud provider
+        # Cloud mode: use Gemini
         if mode == "cloud":
-            if self.default_provider == "openai" and self.openai_enabled:
-                return self._get_openai_config()
-            elif self.default_provider == "anthropic" and self.anthropic_enabled:
-                return self._get_anthropic_config()
-            elif self.openai_enabled:
-                return self._get_openai_config()
-            elif self.anthropic_enabled:
-                return self._get_anthropic_config()
+            if self.gemini_enabled:
+                return self._get_gemini_config()
             else:
-                logger.warning("Cloud mode requested but no cloud provider available, falling back to Ollama")
+                logger.warning("Cloud mode requested but Gemini not available, falling back to Ollama")
                 return self._get_ollama_config()
         
         # Default fallback
@@ -139,24 +121,24 @@ class PrivacyManager:
             }
         }
     
-    def _get_anthropic_config(self) -> Dict[str, Any]:
-        """Get Anthropic Claude configuration"""
-        if not self.anthropic_enabled:
-            logger.warning("Anthropic requested but not available, falling back to Ollama")
+    def _get_gemini_config(self) -> Dict[str, Any]:
+        """Get Google Gemini configuration"""
+        if not self.gemini_enabled:
+            logger.warning("Gemini requested but not available, falling back to Ollama")
             return self._get_ollama_config()
         
         return {
-            "provider": "anthropic",
-            "model": settings.ANTHROPIC_MODEL,
-            "api_key": settings.ANTHROPIC_API_KEY,
+            "provider": "gemini",
+            "model": settings.GEMINI_MODEL,
+            "api_key": settings.GEMINI_API_KEY,
             "temperature": 0.7,
-            "max_tokens": 4096,
+            "max_tokens": 8192,
             "privacy_level": "cloud",
             "data_residency": "cloud",
             "capabilities": {
                 "complex_reasoning": True,
-                "multi_modal": False,
-                "context_window": 200000
+                "multi_modal": True,
+                "context_window": 1000000  # 1M tokens!
             }
         }
     
@@ -202,9 +184,8 @@ class PrivacyManager:
     def get_available_providers(self) -> Dict[str, bool]:
         """Get all available LLM providers"""
         return {
-            "ollama": self.ollama_enabled,
-            "openai": self.openai_enabled,
-            "anthropic": self.anthropic_enabled
+            "gemini": self.gemini_enabled,
+            "ollama": self.ollama_enabled
         }
     
     def get_available_modes(self) -> Dict[str, bool]:
@@ -212,6 +193,6 @@ class PrivacyManager:
         return {
             "auto": True,
             "secure": self.ollama_enabled,
-            "cloud": self.openai_enabled or self.anthropic_enabled
+            "cloud": self.gemini_enabled
         }
 

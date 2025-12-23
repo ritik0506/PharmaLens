@@ -116,7 +116,7 @@ class RegulatoryAgent:
         # Try to get LLM-enhanced regulatory assessment
         llm_assessment = None
         try:
-            if llm_config.get("provider") in ["openai", "ollama", "local"]:
+            if llm_config.get("provider") in ["gemini", "ollama", "local"]:
                 prompt = f"""Analyze the regulatory approval pathway for {molecule}:
 
 Pathway: {pathway}
