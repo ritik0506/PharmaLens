@@ -12,8 +12,8 @@ export const useModel = () => {
 
 export const ModelProvider = ({ children }) => {
   const [selectedModel, setSelectedModel] = useState(() => {
-    // Load from localStorage or default to ollama
-    return localStorage.getItem('pharmalens_model') || 'ollama';
+    // Load from localStorage or default to gemini
+    return localStorage.getItem('pharmalens_model') || 'gemini';
   });
 
   useEffect(() => {
@@ -23,30 +23,30 @@ export const ModelProvider = ({ children }) => {
 
   const getModelConfig = () => {
     const configs = {
+      gemini: {
+        provider: 'gemini',
+        displayName: 'Gemini 1.5 Flash',
+        description: 'Google AI - Free, fast, capable',
+        icon: '✨',
+        cost: 'Free (1M tokens/month)'
+      },
       ollama: {
         provider: 'ollama',
         displayName: 'Llama 3 (Secure)',
         description: 'HIPAA-compliant, runs locally',
         icon: '🔒',
-        cost: 'Free'
-      },
-      openai: {
-        provider: 'openai',
-        displayName: 'GPT-4 (Cloud)',
-        description: 'OpenAI\'s most advanced model',
-        icon: '☁️',
-        cost: '$0.01-0.03/1K tokens'
+        cost: 'Free (Local)'
       }
     };
 
-    return configs[selectedModel] || configs.ollama;
+    return configs[selectedModel] || configs.gemini;
   };
 
   const value = {
     selectedModel,
     setSelectedModel,
     modelConfig: getModelConfig(),
-    availableModels: ['ollama', 'openai']
+    availableModels: ['gemini', 'ollama']
   };
 
   return (

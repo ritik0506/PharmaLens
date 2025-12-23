@@ -22,23 +22,26 @@ import {
   Settings,
   Bell,
   Sun,
-  Moon
+  Moon,
+  Sparkles
 } from 'lucide-react';
 import { ResearchContext } from '../../context/ResearchContext';
 import { useTheme } from '../../context/ThemeContext';
+import { useModel } from '../../context/ModelContext';
 
 const Navbar = () => {
   const { privacyMode, setPrivacyMode } = useContext(ResearchContext);
   const { mode, toggle } = useTheme();
+  const { selectedModel, setSelectedModel } = useModel();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // Toggle between secure (local) and cloud modes
-  const handleToggle = () => {
-    const newMode = privacyMode === 'secure' ? 'cloud' : 'secure';
-    setPrivacyMode(newMode);
+  // Toggle between Gemini (cloud) and Ollama (local)
+  const handleModelToggle = () => {
+    const newModel = selectedModel === 'ollama' ? 'gemini' : 'ollama';
+    setSelectedModel(newModel);
   };
   
-  const isSecureMode = privacyMode === 'secure';
+  const isLocalModel = selectedModel === 'ollama';
   
   return (
     <nav className="bg-white dark:bg-[#071018] shadow-sm border-b border-gray-200 dark:border-white/10 sticky top-0 z-50">
@@ -104,51 +107,51 @@ const Navbar = () => {
               </span>
             </button>
             
-            {/* Privacy Mode Toggle */}
+            {/* AI Model Toggle - Gemini vs Ollama */}
             <div className="flex items-center space-x-3 bg-gray-100 dark:bg-gray-800 rounded-full px-4 py-2 border border-gray-200 dark:border-gray-700">
-              {/* Mode Label */}
+              {/* Ollama Label */}
               <span className={`text-sm font-medium transition-colors ${
-                isSecureMode ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
+                isLocalModel ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'
               }`}>
                 <Shield className="w-4 h-4 inline mr-1" />
-                Secure
+                Ollama
               </span>
               
               {/* Toggle Switch */}
               <button
-                onClick={handleToggle}
+                onClick={handleModelToggle}
                 className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                  isSecureMode 
+                  isLocalModel 
                     ? 'bg-green-500 focus:ring-green-500' 
                     : 'bg-blue-500 focus:ring-blue-500'
                 }`}
                 role="switch"
-                aria-checked={isSecureMode}
-                aria-label="Privacy mode toggle"
+                aria-checked={isLocalModel}
+                aria-label="AI model toggle"
               >
                 <span
                   className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
-                    isSecureMode ? 'translate-x-1' : 'translate-x-7'
+                    isLocalModel ? 'translate-x-1' : 'translate-x-7'
                   }`}
                 />
               </button>
               
-              {/* Cloud Label */}
+              {/* Gemini Label */}
               <span className={`text-sm font-medium transition-colors ${
-                !isSecureMode ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
+                !isLocalModel ? 'text-blue-600 dark:text-blue-400' : 'text-gray-400 dark:text-gray-500'
               }`}>
-                Cloud
-                <Cloud className="w-4 h-4 inline ml-1" />
+                Gemini
+                <Sparkles className="w-4 h-4 inline ml-1" />
               </span>
             </div>
             
             {/* Mode Status Badge - Shows Active LLM */}
             <div className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-              isSecureMode 
+              isLocalModel
                 ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400 border-green-200 dark:border-green-800' 
                 : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-800'
             }`}>
-              {isSecureMode ? '🔒 Llama 3 (Secure)' : '☁️ GPT-4 (Cloud)'}
+              {isLocalModel ? '🔒 Llama 3 (Local)' : '✨ Gemini (Cloud)'}
             </div>
             
             {/* Notification Bell */}
@@ -174,33 +177,33 @@ const Navbar = () => {
         {/* Mobile Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#071018]">
-            {/* Mobile Privacy Toggle */}
+            {/* Mobile AI Model Toggle */}
             <div className="flex flex-col space-y-4 px-2">
               <div className="flex items-center justify-between">
                 <span className="text-sm font-medium text-gray-700 dark:text-gray-300">AI Model</span>
                 <button
-                  onClick={handleToggle}
+                  onClick={handleModelToggle}
                   className={`relative inline-flex h-6 w-12 items-center rounded-full transition-colors ${
-                    isSecureMode ? 'bg-green-500' : 'bg-blue-500'
+                    isLocalModel ? 'bg-green-500' : 'bg-blue-500'
                   }`}
                 >
                   <span
                     className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-lg transition-transform ${
-                      isSecureMode ? 'translate-x-1' : 'translate-x-7'
+                      isLocalModel ? 'translate-x-1' : 'translate-x-7'
                     }`}
                   />
                 </button>
               </div>
               
               <div className={`text-center py-2 rounded-lg text-sm font-medium ${
-                isSecureMode 
+                isLocalModel
                   ? 'bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-400' 
                   : 'bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400'
               }`}>
-                {isSecureMode ? (
-                  <span><Shield className="w-4 h-4 inline mr-1" /> Llama 3 (Secure)</span>
+                {isLocalModel ? (
+                  <span><Shield className="w-4 h-4 inline mr-1" /> Llama 3 (Ollama)</span>
                 ) : (
-                  <span><Cloud className="w-4 h-4 inline mr-1" /> GPT-4 (Cloud)</span>
+                  <span><Sparkles className="w-4 h-4 inline mr-1" /> Gemini 1.5</span>
                 )}
               </div>
             </div>

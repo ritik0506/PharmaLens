@@ -7,18 +7,18 @@ const ModelSwitcher = () => {
 
   const models = [
     {
+      id: 'gemini',
+      name: 'Gemini 1.5 Flash',
+      icon: '✨',
+      description: 'Google AI - Free',
+      badge: 'Cloud'
+    },
+    {
       id: 'ollama',
       name: 'Llama 3',
       icon: '🔒',
-      description: 'HIPAA-compliant, local',
+      description: 'Local - HIPAA compliant',
       badge: 'Secure'
-    },
-    {
-      id: 'openai',
-      name: 'GPT-4',
-      icon: '☁️',
-      description: 'OpenAI cloud model',
-      badge: 'Cloud'
     }
   ];
 

@@ -33,6 +33,7 @@ import {
 
 // Use the safe hook exported from ResearchContext (returns fallbacks when provider missing)
 import { useResearch } from '../context/ResearchContext';
+import { useModel } from '../context/ModelContext';
 
 import { researchService } from '../services/api';
 import AgentStatusCard from '../components/dashboard/AgentStatusCard';
@@ -48,9 +49,7 @@ import StrategySelector from '../components/StrategySelector';
 const ResearchDashboard = () => {
   // useResearch gives safe defaults if provider isn't present
   const { privacyMode } = useResearch();
-  
-  // Map privacy mode to model: secure -> ollama (Llama 3), cloud -> openai (GPT-4)
-  const selectedModel = privacyMode === 'secure' ? 'ollama' : 'openai';
+  const { selectedModel } = useModel(); // Get selected model from ModelContext
 
   const [drugName, setDrugName] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -99,20 +98,38 @@ const ResearchDashboard = () => {
       // Actual API call with selected model provider
       const response = await researchService.analyze(drugName, privacyMode, selectedModel);
 
-      // Simulate progressive completion of agents
-      const agentKeys = [
-        'Master Orchestrator', 'IQVIA Insights Agent', 'EXIM Trends Agent',
-        'Patent Landscape Agent', 'Clinical Trials Agent', 'Internal Knowledge Agent',
-        'Web Intelligence Agent', 'Regulatory Compliance', 'Patient Sentiment', 'ESG & Sustainability'
-      ];
-      for (let i = 0; i < agentKeys.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 150));
-        setAgentStatuses(prev => prev.map(agent =>
-          agent.name === agentKeys[i] ? { ...agent, status: 'completed' } : agent
-        ));
-      }
-
       setResults(response.data);
+
+      // Map backend agent keys to frontend agent names
+      const backendToFrontendMap = {
+        'orchestrator': 'Master Orchestrator',
+        'iqvia': 'IQVIA Insights Agent',
+        'exim': 'EXIM Trends Agent',
+        'patent': 'Patent Landscape Agent',
+        'clinical': 'Clinical Trials Agent',
+        'internal_knowledge': 'Internal Knowledge Agent',
+        'web_intelligence': 'Web Intelligence Agent',
+        'regulatory': 'Regulatory Compliance',
+        'patient_sentiment': 'Patient Sentiment',
+        'esg': 'ESG & Sustainability'
+      };
+
+      // Update agent statuses based on actual API response
+      setAgentStatuses(prev => prev.map(agent => {
+        // Find the backend key for this agent
+        const backendKey = Object.entries(backendToFrontendMap).find(
+          ([key, name]) => name === agent.name
+        )?.[0];
+
+        // Check if data exists for this agent
+        const hasData = backendKey && response.data?.results?.[backendKey];
+        
+        return {
+          ...agent,
+          status: hasData ? 'completed' : 'idle'
+        };
+      }));
+
       setActiveTab('agents');
     } catch (err) {
       console.error('Research failed:', err);
@@ -143,8 +160,8 @@ const ResearchDashboard = () => {
       'EXIM Trends Agent': 'exim',
       'Patent Landscape Agent': 'patent',
       'Clinical Trials Agent': 'clinical',
-      'Internal Knowledge Agent': 'internal',
-      'Web Intelligence Agent': 'web_intel',
+      'Internal Knowledge Agent': 'internal_knowledge',
+      'Web Intelligence Agent': 'web_intelligence',
       'Regulatory Compliance': 'regulatory',
       'Patient Sentiment': 'patient_sentiment',
       'ESG & Sustainability': 'esg'
